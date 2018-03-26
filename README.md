@@ -3,8 +3,8 @@
 
 ### Trabalho	Prático	nº	1 (v1.0,	22/Mar/2018)
 
-```
-Resumo
+
+#### Resumo
 Neste trabalho pretende-se desenvolver um protocolo de segurança para comunicação em
 grupo que designaremos por (Secure Transport for Group Communication) tendo em vista
 proteger comunicações IP em modo multiponto (IP Multicast - IPMC). A implementação
@@ -16,7 +16,7 @@ de referência X.800. Um dos aspectos relevantes do trabalho é a concepção do
 STGC como serviço de segurança genérico, com comprovação de prova de conceito e a
 demonstração dessa generalidade com base numa uma aplicação concreta que será usada
 como demonstrador.
-```
+
 **1. Contexto**
 
 A segurança de canais de comunicação em aplicações distribuídas suportadas em redes TCP/IP (ou

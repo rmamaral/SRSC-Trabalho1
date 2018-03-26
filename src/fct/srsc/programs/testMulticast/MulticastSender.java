@@ -1,5 +1,7 @@
 package fct.srsc.programs.testMulticast;
 
+import fct.srsc.stgc.phase1.STGCMulticastSocket;
+
 import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
@@ -24,7 +26,7 @@ public class MulticastSender {
             System.exit(0);
         }
 
-        MulticastSocket ms = new MulticastSocket();
+        MulticastSocket ms = new STGCMulticastSocket();
         do {
             String msgsecret = "topcsecret message, sent on: ";
             String msgdate = new Date().toString();

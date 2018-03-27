@@ -31,7 +31,7 @@ public class MulticastReceiver {
 
         do {
 
-            p.setLength(65536); // resize with max size
+            //p.setLength(65536); // resize with max size
             rs.receive(p);
             recvmsg = new String(p.getData(), 0, p.getLength());
 

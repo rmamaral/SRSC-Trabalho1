@@ -13,8 +13,9 @@ import java.security.NoSuchProviderException;
 
 public class STGCMulticastSocket extends MulticastSocket {
 
-    private final SecretKey key64 = new SecretKeySpec(new byte[] {
-            0x00, 0x01,0x02, 0x03, 0x04, 0x05, 0x06, 0x07 }, "blowfish");
+    public final static int BLOCKSIZE = 64;
+    private final SecretKey key64 = new SecretKeySpec(new byte[]{
+            0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, "blowfish");
 
     Cipher c;
 
@@ -50,15 +51,18 @@ public class STGCMulticastSocket extends MulticastSocket {
     }
 
     @Override
-    public void receive(DatagramPacket packet) throws IOException {
+    public void receive(DatagramPacket packet) {
         System.out.println("Receiving message through secure channel");
 
         try {
-            super.receive(packet);
+            DatagramPacket p = new DatagramPacket(new byte[BLOCKSIZE], BLOCKSIZE);
 
+            super.receive(p);
             c.init(Cipher.DECRYPT_MODE, key64);
-            byte[] enc = c.doFinal(packet.getData());
+            byte[] enc = c.doFinal(p.getData());
+
             packet.setData(enc);
+            packet.setLength(enc.length);
 
         } catch (Exception e) {
             System.out.println("Message not received/decrypted. An error occured");

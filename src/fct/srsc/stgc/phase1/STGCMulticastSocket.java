@@ -43,12 +43,9 @@ public class STGCMulticastSocket extends MulticastSocket {
             c.init(Cipher.ENCRYPT_MODE, key64);
             byte[] enc = c.doFinal(packet.getData());
 
-            System.out.println("packet message size: " + packet.getData().length);
-
+            //Setting encrypted data and length to packet
             packet.setData(enc);
             packet.setLength(enc.length);
-
-            System.out.println("packet encripted size: " + packet.getData().length);
 
             super.send(packet);
         } catch (Exception e) {
@@ -69,8 +66,8 @@ public class STGCMulticastSocket extends MulticastSocket {
             c.init(Cipher.DECRYPT_MODE, key64);
             byte[] enc = c.doFinal(Arrays.copyOf(p.getData(), p.getLength()));
 
-            packet.setData(enc);
             packet.setLength(enc.length);
+            packet.setData(enc);
 
         } catch (Exception e) {
             System.out.println("Message not received/decrypted. An error occured");

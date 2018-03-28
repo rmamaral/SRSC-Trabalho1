@@ -10,6 +10,7 @@ import java.net.MulticastSocket;
 import java.net.SocketAddress;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
+import java.util.Arrays;
 
 public class STGCMulticastSocket extends MulticastSocket {
 
@@ -41,7 +42,13 @@ public class STGCMulticastSocket extends MulticastSocket {
         try {
             c.init(Cipher.ENCRYPT_MODE, key64);
             byte[] enc = c.doFinal(packet.getData());
+
+            System.out.println("packet message size: " + packet.getData().length);
+
             packet.setData(enc);
+            packet.setLength(enc.length);
+
+            System.out.println("packet encripted size: " + packet.getData().length);
 
             super.send(packet);
         } catch (Exception e) {
@@ -55,11 +62,12 @@ public class STGCMulticastSocket extends MulticastSocket {
         System.out.println("Receiving message through secure channel");
 
         try {
-            DatagramPacket p = new DatagramPacket(new byte[BLOCKSIZE], BLOCKSIZE);
+            DatagramPacket p = new DatagramPacket(new byte[65356], 65356);
 
             super.receive(p);
+
             c.init(Cipher.DECRYPT_MODE, key64);
-            byte[] enc = c.doFinal(p.getData());
+            byte[] enc = c.doFinal(Arrays.copyOf(p.getData(), p.getLength()));
 
             packet.setData(enc);
             packet.setLength(enc.length);

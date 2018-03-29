@@ -4,6 +4,7 @@ public class ChatRoomConfig {
 
     private String ip;
     private String ciphersuite;
+    private String provider;
     private String keySize;
     private String keyValue;
     private String mac;
@@ -13,9 +14,10 @@ public class ChatRoomConfig {
     public ChatRoomConfig() {
     }
 
-    public ChatRoomConfig(String ip, String ciphersuite, String keySize, String keyValue, String mac, String macKeySize, String macKeyValue) {
+    public ChatRoomConfig(String ip, String ciphersuite, String provider, String keySize, String keyValue, String mac, String macKeySize, String macKeyValue) {
         this.ip = ip;
         this.ciphersuite = ciphersuite;
+        this.provider = provider;
         this.keySize = keySize;
         this.keyValue = keyValue;
         this.mac = mac;
@@ -37,6 +39,14 @@ public class ChatRoomConfig {
 
     public void setCiphersuite(String ciphersuite) {
         this.ciphersuite = ciphersuite;
+    }
+
+    public String getProvider() {
+        return provider;
+    }
+
+    public void setProvider(String provider) {
+        this.provider = provider;
     }
 
     public String getKeySize() {

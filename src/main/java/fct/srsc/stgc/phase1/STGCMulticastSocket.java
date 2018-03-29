@@ -1,5 +1,8 @@
 package fct.srsc.stgc.phase1;
 
+import fct.srsc.stgc.phase1.config.ChatRoomConfig;
+import fct.srsc.stgc.phase1.config.ReadFromConfig;
+
 import javax.crypto.Cipher;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
@@ -18,21 +21,25 @@ public class STGCMulticastSocket extends MulticastSocket {
     private final SecretKey key64 = new SecretKeySpec(new byte[]{
             0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07}, "blowfish");
 
+    ChatRoomConfig config;
     Cipher c;
 
-    public STGCMulticastSocket() throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException {
+    public STGCMulticastSocket(String groupAddress) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException {
         super();
-        c = Cipher.getInstance("blowfish/ECB/PKCS5Padding", "BC");
+        config = ReadFromConfig.readFromConfig(groupAddress);
+        c = Cipher.getInstance(config.getCiphersuite(), config.getProvider());
     }
 
-    public STGCMulticastSocket(int port) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException {
+    public STGCMulticastSocket(String groupAddress, int port) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException {
         super(port);
-        c = Cipher.getInstance("blowfish/ECB/PKCS5Padding", "BC");
+        config = ReadFromConfig.readFromConfig(groupAddress);
+        c = Cipher.getInstance(config.getCiphersuite(), config.getProvider());
     }
 
-    public STGCMulticastSocket(SocketAddress bindAdrress) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException {
+    public STGCMulticastSocket(String groupAddress, SocketAddress bindAdrress) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException {
         super(bindAdrress);
-        c = Cipher.getInstance("blowfish/ECB/PKCS5Padding", "BC");
+        config = ReadFromConfig.readFromConfig(groupAddress);
+        c = Cipher.getInstance(config.getCiphersuite(), config.getProvider());
     }
 
     @Override

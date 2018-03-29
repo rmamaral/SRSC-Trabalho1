@@ -75,13 +75,12 @@ public class STGCMulticastSocket extends MulticastSocket {
         System.out.println("Sending message through secure channel");
 
         try {
-        	
         	Key key64 = getKeyFromKeyStore("JCEKS", "mykeystore.jks", "mykey1", "password".toCharArray(), "password".toCharArray());
         
             c.init(Cipher.ENCRYPT_MODE, key64);
             byte[] payload = c.doFinal(packet.getData());
             
-            int payload_size = payload.length;
+            short payload_size = (short) payload.length;
             
             String header = VERSION + "/" + PAYLOAD_TYPE + "/" + payload_size + "|"; 
             byte[] headerBytes = header.getBytes();
@@ -106,7 +105,7 @@ public class STGCMulticastSocket extends MulticastSocket {
         System.out.println("Receiving message through secure channel");
 
         try {
-            DatagramPacket p = new DatagramPacket(new byte[65356], 65356);
+            DatagramPacket p = new DatagramPacket(new byte[65536], 65536);
 
             super.receive(p);
             Key key64 = getKeyFromKeyStore("JCEKS", "mykeystore.jks", "mykey1", "password".toCharArray(), "password".toCharArray());

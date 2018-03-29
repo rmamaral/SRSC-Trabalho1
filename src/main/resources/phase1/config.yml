@@ -1,0 +1,24 @@
+configs:
+  - ip: 224.10.10.10
+    ciphersuite: blowfish/ECB/PECKS5Padding
+    keySize: 256
+    keyValue: keyvalue
+    mac: RC6-GMAC
+    macKeySize: 256
+    macKeyValue: mackeyvalue
+
+  - ip: 224.10.10.11
+    ciphersuite: blowfish/ECB/NoPadding
+    keySize: 512
+    keyValue: keyvalue
+    mac: RC6-GMAC
+    macKeySize: 256
+    macKeyValue: mackeyvalue
+
+  - ip: 238.69.69.69
+    ciphersuite: AES/CBC/PECKS7Padding
+    keySize: 256
+    keyValue: keyvalue
+    mac: RC6-GMAC
+    macKeySize: 256
+    macKeyValue: mackeyvalue

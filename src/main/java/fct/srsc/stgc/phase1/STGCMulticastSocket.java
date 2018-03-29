@@ -8,6 +8,7 @@ import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 
+import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -24,6 +25,8 @@ public class STGCMulticastSocket extends MulticastSocket {
 
     private ChatRoomConfig config;
     private Cipher c;
+    private static final double VERSION = 0.1;
+    private static final String PAYLOAD_TYPE = "M";
 
     public STGCMulticastSocket(String groupAddress) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException {
         super();
@@ -76,11 +79,20 @@ public class STGCMulticastSocket extends MulticastSocket {
         	Key key64 = getKeyFromKeyStore("JCEKS", "mykeystore.jks", "mykey1", "password".toCharArray(), "password".toCharArray());
         
             c.init(Cipher.ENCRYPT_MODE, key64);
-            byte[] enc = c.doFinal(packet.getData());
-
+            byte[] payload = c.doFinal(packet.getData());
+            
+            int payload_size = payload.length;
+            
+            String header = VERSION + "/" + PAYLOAD_TYPE + "/" + payload_size + "|"; 
+            byte[] headerBytes = header.getBytes();
+            
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            outputStream.write(headerBytes);
+            outputStream.write(payload);
+            
             //Setting encrypted data and length to packet
-            packet.setData(enc);
-            packet.setLength(enc.length);
+            packet.setData(outputStream.toByteArray());
+            packet.setLength(outputStream.size());
 
             super.send(packet);
         } catch (Exception e) {

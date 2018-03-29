@@ -23,10 +23,14 @@ import java.util.Base64;
 
 public class STGCMulticastSocket extends MulticastSocket {
 
+    private static final String VERSION = "0";
+    private static final String RELEASE = "1";
+    private static final String PAYLOAD_TYPE = "M";
+
+    private static final int HEADER_SIZE = 6;
+
     private ChatRoomConfig config;
     private Cipher c;
-    private static final double VERSION = 0.1;
-    private static final String PAYLOAD_TYPE = "M";
 
     public STGCMulticastSocket(String groupAddress) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException {
         super();
@@ -45,30 +49,6 @@ public class STGCMulticastSocket extends MulticastSocket {
         config = ReadFromConfig.readFromConfig(groupAddress);
         c = Cipher.getInstance(config.getCiphersuite(), config.getProvider());
     }
-    
-    public Key getKeyFromKeyStore(String type, String keystore, String key, char[] keyPassword, char[] keyStorePassword) {
-
-    	try {
-    	KeyStore keyStore = KeyStore.getInstance(type);
-        	   // Keystore where symmetric keys are stored (type JCEKS)
-   	    FileInputStream stream = new FileInputStream(keystore);
-               // Password of the keystore: in ths case is "password"
-   	    keyStore.load(stream, keyStorePassword);
-
-               // We decided to store the keys in these entries: mykey1, mykey2
-               // Also, we used "password" to protect each entry...
-               // See how the keytool was used ...
-
-   	    Key key1 = keyStore.getKey(key, keyPassword);
-   	    System.out.println(Base64.getEncoder().encodeToString(key1.getEncoded()));
-   	    return key1;
-   	    
-    	}
-    	catch(Exception e) {
-    		return null;
-    	}
-    	
-    }
 
     @Override
     public void send(DatagramPacket packet) throws IOException {
@@ -79,14 +59,13 @@ public class STGCMulticastSocket extends MulticastSocket {
         
             c.init(Cipher.ENCRYPT_MODE, key64);
             byte[] payload = c.doFinal(packet.getData());
-            
-            short payload_size = (short) payload.length;
-            
-            String header = VERSION + "/" + PAYLOAD_TYPE + "/" + payload_size + "|"; 
-            byte[] headerBytes = header.getBytes();
+
+            byte[] header = buildHeader(payload.length);
+            System.out.println("header size: " + header.length);
             
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-            outputStream.write(headerBytes);
+            outputStream.write(header);
+            outputStream.write(0);
             outputStream.write(payload);
             
             //Setting encrypted data and length to packet
@@ -110,7 +89,9 @@ public class STGCMulticastSocket extends MulticastSocket {
             super.receive(p);
             Key key64 = getKeyFromKeyStore("JCEKS", "mykeystore.jks", "mykey1", "password".toCharArray(), "password".toCharArray());
             c.init(Cipher.DECRYPT_MODE, key64);
-            byte[] enc = c.doFinal(Arrays.copyOf(p.getData(), p.getLength()));
+
+            //Header size + 1 because of the delimiter between header/payload (6 bytes of header + 1 delimiter)
+            byte[] enc = c.doFinal(Arrays.copyOfRange(p.getData(), HEADER_SIZE + 1, p.getLength()));
 
             packet.setLength(enc.length);
             packet.setData(enc);
@@ -119,5 +100,40 @@ public class STGCMulticastSocket extends MulticastSocket {
             System.out.println("Message not received/decrypted. An error occured");
             e.printStackTrace();
         }
+    }
+
+    private Key getKeyFromKeyStore(String type, String keystore, String key, char[] keyPassword, char[] keyStorePassword) {
+
+        try {
+            KeyStore keyStore = KeyStore.getInstance(type);
+            // Keystore where symmetric keys are stored (type JCEKS)
+            FileInputStream stream = new FileInputStream(keystore);
+            keyStore.load(stream, keyStorePassword);
+
+            Key key1 = keyStore.getKey(key, keyPassword);
+            System.out.println(Base64.getEncoder().encodeToString(key1.getEncoded()));
+
+            return key1;
+        }
+        catch(Exception e) {
+            return null;
+        }
+    }
+
+    private byte [] buildHeader (int payloadSize) throws IOException {
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+
+        outputStream.write(VERSION.getBytes());
+        outputStream.write(RELEASE.getBytes());
+
+        outputStream.write(0);
+        outputStream.write(PAYLOAD_TYPE.getBytes());
+
+        outputStream.write(0);
+        outputStream.write((short) payloadSize);
+
+        assert outputStream.toByteArray().length == HEADER_SIZE;
+
+        return outputStream.toByteArray();
     }
 }

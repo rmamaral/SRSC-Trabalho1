@@ -3,26 +3,21 @@ package fct.srsc;
 import fct.srsc.stgc.phase1.config.ChatRoomConfig;
 import fct.srsc.stgc.phase1.config.Configurations;
 import org.yaml.snakeyaml.Yaml;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 
 public class HelloWorld {
 
 
-    public static void main(String[] args) {
-        Yaml yaml = new Yaml();
-        try{
-            InputStream in = HelloWorld.class.getClass().getResourceAsStream("/phase1/config.yml");
+    public static void main(String[] args) throws IOException {
 
-             Configurations configs = yaml.loadAs(in, Configurations.class);
+        short c = 1;
 
-             for (ChatRoomConfig conf : configs.getConfigs()){
-                 System.out.println(conf.getCiphersuite());
-             }
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        outputStream.write(c);
 
-            System.out.println("238.69.69.69: " + configs.getChatRoomConfig("238.69.69.69").getIp());
-
-        }catch (Exception e){
-            e.printStackTrace();
-        }
+        System.out.println(outputStream.toByteArray().length);
     }
 }

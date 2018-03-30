@@ -194,7 +194,7 @@ public class STGCMulticastSocket extends MulticastSocket {
         full.write(ecryptedCore);
         full.write(hMacOut.doFinal());
         
-        System.out.println(full.toString());
+        System.out.println("cipher text -> " +Base64.getEncoder().encodeToString(full.toByteArray()));
         
         return full.toByteArray();
     }

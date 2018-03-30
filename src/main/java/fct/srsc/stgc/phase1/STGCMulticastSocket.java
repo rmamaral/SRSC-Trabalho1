@@ -4,6 +4,7 @@ import fct.srsc.stgc.phase1.config.ChatRoomConfig;
 import fct.srsc.stgc.phase1.config.ReadFromConfig;
 
 import javax.crypto.Cipher;
+import javax.crypto.Mac;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
@@ -16,10 +17,12 @@ import java.net.MulticastSocket;
 import java.net.SocketAddress;
 import java.security.Key;
 import java.security.KeyStore;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.Date;
 
 public class STGCMulticastSocket extends MulticastSocket {
 
@@ -31,6 +34,7 @@ public class STGCMulticastSocket extends MulticastSocket {
 
     private ChatRoomConfig config;
     private Cipher c;
+    private int id = 0;
 
     public STGCMulticastSocket(String groupAddress) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException {
         super();
@@ -56,9 +60,8 @@ public class STGCMulticastSocket extends MulticastSocket {
 
         try {
         	Key key64 = getKeyFromKeyStore("JCEKS", "mykeystore.jks", "mykey1", "password".toCharArray(), "password".toCharArray());
-        
-            c.init(Cipher.ENCRYPT_MODE, key64);
-            byte[] payload = c.doFinal(packet.getData());
+        	    
+            byte[] payload = buildPayload(key64, packet);//c.doFinal(packet.getData());
 
             byte[] header = buildHeader(payload.length);
             System.out.println("header size: " + header.length);
@@ -135,5 +138,70 @@ public class STGCMulticastSocket extends MulticastSocket {
         assert outputStream.toByteArray().length == HEADER_SIZE;
 
         return outputStream.toByteArray();
+    }
+    
+   private byte [] buildPayload (Key key, DatagramPacket packet) throws IOException {
+        
+    try {
+    	  //needed?  
+        Cipher c2 = c; 
+    	
+        //Build mp, id nonce and message
+    	ByteArrayOutputStream mp = new ByteArrayOutputStream();
+        
+        String dateTimeString = Long.toString(new Date().getTime());
+        byte[] nonceByte = dateTimeString.getBytes();
+        byte[] painText = packet.getData();
+        
+        mp.write(id);
+        mp.write(nonceByte);
+        mp.write(painText);
+        
+        //Cipher mp
+        c.init(Cipher.ENCRYPT_MODE, key);        
+        byte[] ecryptedMp = c.doFinal(mp.toByteArray());
+        
+        //Create hash of mp
+        Mac hMac = Mac.getInstance("HMacSHA1", "BC");
+        Key hMacKey = new SecretKeySpec(key.getEncoded(), "HMacSHA1");
+        
+        hMac.init(hMacKey);
+        hMac.update(mp.toByteArray()); 
+        
+        //Build mp with his hash
+        ByteArrayOutputStream mpMac = new ByteArrayOutputStream();
+        mpMac.write(ecryptedMp);
+        mpMac.write(hMac.doFinal());
+        
+        //Build core
+        ByteArrayOutputStream core = new ByteArrayOutputStream();
+        core.write(key.toString().getBytes());
+        core.write(mpMac.toByteArray());
+        
+        //Cipher core
+        c2.init(Cipher.ENCRYPT_MODE, key);
+        byte[] ecryptedCore = c2.doFinal(core.toByteArray());
+        
+        //Create hash for core
+        Mac hMacOut = Mac.getInstance("HMacSHA1", "BC");
+        Key hMacKeyOut = new SecretKeySpec(key.getEncoded(), "HMacSHA1");
+        
+        hMacOut.init(hMacKeyOut);
+        hMacOut.update(ecryptedCore); 
+        
+        //Build final 
+        ByteArrayOutputStream full = new ByteArrayOutputStream(); 
+        full.write(ecryptedCore);
+        full.write(hMacOut.doFinal());
+        
+        System.out.println(full.toString());
+        
+        return full.toByteArray();
+    }
+    catch(Exception e) {
+    	System.out.println(e);
+    }
+    	
+       return null;
     }
 }

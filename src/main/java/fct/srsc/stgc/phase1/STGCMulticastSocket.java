@@ -20,9 +20,12 @@ import java.security.KeyStore;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
+import java.security.SecureRandom;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Date;
+import java.util.List;
 
 public class STGCMulticastSocket extends MulticastSocket {
 
@@ -35,23 +38,28 @@ public class STGCMulticastSocket extends MulticastSocket {
     private ChatRoomConfig config;
     private Cipher c;
     private int id = 1;
+    private List<byte[]> nounceList;
 
     public STGCMulticastSocket(String groupAddress) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException {
         super();
         config = ReadFromConfig.readFromConfig(groupAddress);
         c = Cipher.getInstance(config.getCiphersuite(), config.getProvider());
+        nounceList = new ArrayList<byte[]>();
     }
 
     public STGCMulticastSocket(String groupAddress, int port) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException {
         super(port);
         config = ReadFromConfig.readFromConfig(groupAddress);
         c = Cipher.getInstance(config.getCiphersuite(), config.getProvider());
+        nounceList = new ArrayList<byte[]>();
     }
 
     public STGCMulticastSocket(String groupAddress, SocketAddress bindAdrress) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException {
         super(bindAdrress);
         config = ReadFromConfig.readFromConfig(groupAddress);
         c = Cipher.getInstance(config.getCiphersuite(), config.getProvider());
+        nounceList = new ArrayList<byte[]>();
+        
     }
 
     @Override
@@ -89,6 +97,7 @@ public class STGCMulticastSocket extends MulticastSocket {
             DatagramPacket p = new DatagramPacket(new byte[65536], 65536);
 
             super.receive(p);
+            
             Key key64 = getKeyFromKeyStore("JCEKS", "mykeystore.jks", "mykey1", "password".toCharArray(), "password".toCharArray());
          
             //Header size + 1 because of the delimiter between header/payload (6 bytes of header + 1 delimiter)
@@ -149,7 +158,7 @@ public class STGCMulticastSocket extends MulticastSocket {
     	ByteArrayOutputStream mp = new ByteArrayOutputStream();
         
         String dateTimeString = Long.toString(new Date().getTime());
-        byte[] nonceByte = dateTimeString.getBytes();
+        byte[] nonceByte = generateNounce();
         byte[] painText = packet.getData();
 
         mp.write(Integer.toString(id).getBytes());
@@ -242,8 +251,16 @@ public class STGCMulticastSocket extends MulticastSocket {
 	    	}
 
 	    	String messageParts = new String (Arrays.copyOfRange(content, 0 , content.length - hMacIn.getMacLength()));
-	    	String message = messageParts.split("\\|")[2];
-
+	    	System.out.println("MSG BYTES: " + messageParts);
+	    	String[] splitMsg = messageParts.split("\\|");
+	    	
+	    	if(!nounceList.contains(splitMsg[1]))
+	    		nounceList.add(splitMsg[1].getBytes());
+	    	else{
+	    		//try exception
+	    	}
+		
+	    	String message = splitMsg[2];
             return message.getBytes();
 
 	        //return content;
@@ -254,4 +271,12 @@ public class STGCMulticastSocket extends MulticastSocket {
 	    	
 	       return null;
 	    }
+   
+   private byte[] generateNounce(){
+	   
+	   SecureRandom random = new SecureRandom();
+	   final byte[] nounce = new byte[512];
+	   random.nextBytes(nounce);
+	   return nounce;
+   }
 }

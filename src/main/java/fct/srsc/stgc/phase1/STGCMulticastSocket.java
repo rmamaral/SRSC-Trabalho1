@@ -151,13 +151,9 @@ public class STGCMulticastSocket extends MulticastSocket {
         byte[] nonceByte = dateTimeString.getBytes();
         byte[] painText = packet.getData();
         
-        //mp.write(id);
-        //mp.write(nonceByte);
+        mp.write(id);
+        mp.write(nonceByte);
         mp.write(painText);
-        
-        //Cipher mp
-        c.init(Cipher.ENCRYPT_MODE, key);        
-        byte[] ecryptedMp = c.doFinal(mp.toByteArray());
         
         //Create hash of mp
         Mac hMac = Mac.getInstance("HMacSHA1", "BC");
@@ -166,19 +162,12 @@ public class STGCMulticastSocket extends MulticastSocket {
         hMac.init(hMacKey);
         hMac.update(mp.toByteArray()); 
         
-        //Build mp with his hash
-        ByteArrayOutputStream mpMac = new ByteArrayOutputStream();
-        mpMac.write(ecryptedMp);
-        mpMac.write(hMac.doFinal());
+        //Add mp hash
+        mp.write(hMac.doFinal());
         
-        //Build core
-        ByteArrayOutputStream core = new ByteArrayOutputStream();
-        core.write(key.toString().getBytes());
-        core.write(mpMac.toByteArray());
-        
-        //Cipher core
-        c.init(Cipher.ENCRYPT_MODE, key);
-        byte[] ecryptedCore = c.doFinal(core.toByteArray());
+        //Cipher mp + hash
+        c.init(Cipher.ENCRYPT_MODE, key);        
+        byte[] ecryptedCore = c.doFinal(mp.toByteArray());
         
         //Create hash for core
         Mac hMacOut = Mac.getInstance("HMacSHA1", "BC");
@@ -240,8 +229,7 @@ public class STGCMulticastSocket extends MulticastSocket {
 
 	    	hMacIn.init(hMacInKey);
 	    	hMacIn.update(content, 0, (content.length-hMacIn.getMacLength()));
-	    	System.out.println("hash --> " + Base64.getEncoder().encodeToString(hMacIn.doFinal()));
-	    	System.out.println("real --> " + Base64.getEncoder().encodeToString(content));
+	    	
 	    	if(MessageDigest.isEqual(hMacIn.doFinal(), hMacInString)) {
 	    		System.out.println("Allowed to decode");
 	    	}
@@ -250,7 +238,11 @@ public class STGCMulticastSocket extends MulticastSocket {
 	    		return error.getBytes();
 	    	}
 	    	
-	        return hMacString;
+	    	byte[] message = new byte[content.length - hMacIn.getMacLength()];
+	    	
+            System.arraycopy(content, 0 , message, 0, content.length - hMacIn.getMacLength());  
+	    	
+	        return content;
 	    }
 	    catch(Exception e) {
 	    	System.out.println(e);

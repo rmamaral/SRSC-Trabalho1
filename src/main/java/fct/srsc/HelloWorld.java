@@ -8,16 +8,29 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.security.SecureRandom;
+import java.util.Date;
 
 public class HelloWorld {
 
 
     public static void main(String[] args) throws IOException {
 
-        SecureRandom sr = new SecureRandom();
-        byte [] nonce = new byte[512];
-        sr.nextBytes(nonce);
+        //Build mp, id nonce and message
+        ByteArrayOutputStream mp = new ByteArrayOutputStream();
 
-        System.out.println(new String(nonce));
+        String dateTimeString = Long.toString(new Date().getTime());
+
+        mp.write(Integer.toString(1).getBytes());
+        mp.write('|');
+        mp.write("wd".getBytes());
+        mp.write('|');
+        mp.write("qsd".getBytes());
+
+        byte[] y = mp.toByteArray();
+
+        for (int i = 0; i<y.length; i++){
+            if(y[i]=='|')
+                System.out.println("HILLO");
+        }
     }
 }

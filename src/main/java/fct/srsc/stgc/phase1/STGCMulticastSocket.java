@@ -59,7 +59,7 @@ public class STGCMulticastSocket extends MulticastSocket {
         init(groupAddress);
     }
 
-    private void init (String groupAddress) throws NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException {
+    private void init(String groupAddress) throws NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException {
         config = ReadFromConfig.readFromConfig(groupAddress);
         c = Cipher.getInstance(config.getCiphersuite(), config.getProvider());
         nounceList = new ArrayList<String>();
@@ -69,51 +69,44 @@ public class STGCMulticastSocket extends MulticastSocket {
     public void send(DatagramPacket packet) throws IOException {
         System.out.println("Sending message through secure channel");
 
-        try {
-            Key key64 = getKeyFromKeyStore("JCEKS", "mykeystore.jks", "mykey1", "password".toCharArray(), "password".toCharArray());
+        Key key64 = getKeyFromKeyStore("JCEKS", "mykeystore.jks", "mykey1", "password".toCharArray(), "password".toCharArray());
 
-            byte[] payload = encodePayload(key64, packet);//c.doFinal(packet.getData());
+        byte[] payload = encodePayload(key64, packet);//c.doFinal(packet.getData());
 
-            byte[] header = buildHeader(payload.length);
+        byte[] header = buildHeader(payload.length);
 
-            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-            outputStream.write(header);
-            outputStream.write(0);
-            outputStream.write(payload);
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        outputStream.write(header);
+        outputStream.write(0);
+        outputStream.write(payload);
 
-            //Setting encrypted data and length to packet
-            packet.setData(outputStream.toByteArray());
-            packet.setLength(outputStream.size());
+        //Setting encrypted data and length to packet
+        packet.setData(outputStream.toByteArray());
+        packet.setLength(outputStream.size());
 
-            super.send(packet);
-        } catch (Exception e) {
-            System.out.println("Message not sent. An error occured");
-            e.printStackTrace();
-        }
+        super.send(packet);
     }
 
     @Override
-    public void receive(DatagramPacket packet) {
+    public void receive(DatagramPacket packet) throws IOException {
         System.out.println("Receiving message through secure channel");
 
-        try {
-            DatagramPacket p = new DatagramPacket(new byte[MAX_SIZE], MAX_SIZE);
+        DatagramPacket p = new DatagramPacket(new byte[MAX_SIZE], MAX_SIZE);
 
-            super.receive(p);
+        super.receive(p);
 
-            Key key64 = getKeyFromKeyStore("JCEKS", "mykeystore.jks", "mykey1", "password".toCharArray(), "password".toCharArray());
+        Key key64 = getKeyFromKeyStore("JCEKS", "mykeystore.jks", "mykey1", "password".toCharArray(), "password".toCharArray());
 
-            //Header size + 1 because of the delimiter between header/payload (6 bytes of header + 1 delimiter)
-            byte[] enc = Arrays.copyOfRange(p.getData(), HEADER_SIZE + 1, p.getLength());
+        //Header size + 1 because of the delimiter between header/payload (6 bytes of header + 1 delimiter)
+        byte[] enc = Arrays.copyOfRange(p.getData(), HEADER_SIZE + 1, p.getLength());
 
-            byte[] message = decodePayload(key64, enc);
-            packet.setData(Arrays.copyOfRange(message, 0, MAX_SIZE));
-            packet.setLength(message.length);
+        byte[] message = decodePayload(key64, enc);
 
-        } catch (Exception e) {
-            System.out.println("Message not received/decrypted. An error occured");
-            e.printStackTrace();
-        }
+        packet.setData(Arrays.copyOfRange(message, 0, MAX_SIZE));
+        packet.setLength(message.length);
+
+        packet.setAddress(p.getAddress());
+        packet.setPort(p.getPort());
     }
 
     private Key getKeyFromKeyStore(String type, String keystore, String key, char[] keyPassword, char[] keyStorePassword) {
@@ -162,9 +155,9 @@ public class STGCMulticastSocket extends MulticastSocket {
             byte[] painText = packet.getData();
 
             mp.write(Integer.toString(id).getBytes());
-            mp.write('|');
+            mp.write(0);
             mp.write(nonceByte);
-            mp.write('|');
+            mp.write(0);
             mp.write(painText);
 
             //Create hash of mp
@@ -239,16 +232,31 @@ public class STGCMulticastSocket extends MulticastSocket {
                 throw new MessageIntegrityBrokenException();
 
 
-            String messageParts = new String(Arrays.copyOfRange(content, 0, content.length - hMacIn.getMacLength()));
+            byte[] messageBytes = Arrays.copyOfRange(content, 0, content.length - hMacIn.getMacLength());
+
+            byte[] actualMessage = new byte[MAX_SIZE];
+            int counter = 0;
+            for (int i = 0; i < messageBytes.length; i++) {
+                if (messageBytes[i] == 0) {
+                    counter++;
+                }
+                if (counter == 2) {
+                    actualMessage = Arrays.copyOfRange(messageBytes, i + 1, messageBytes.length);
+                    break;
+                }
+            }
+
+            /*String messageParts = new String(Arrays.copyOfRange(content, 0, content.length - hMacIn.getMacLength()));
             String[] splitMsg = messageParts.split("\\|");
 
-            if (!nounceList.contains(splitMsg[1]))
+            *//*if (!nounceList.contains(splitMsg[1]))
                 nounceList.add(splitMsg[1]);
             else {
                 throw new DuplicatedNonceException();
-            }
+            }*/
 
-            return splitMsg[2].getBytes();
+            //return splitMsg[2].getBytes();
+            return actualMessage;
 
         } catch (Exception e) {
             e.printStackTrace();

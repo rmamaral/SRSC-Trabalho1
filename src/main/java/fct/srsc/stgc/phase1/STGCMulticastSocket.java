@@ -39,6 +39,8 @@ public class STGCMulticastSocket extends MulticastSocket {
     private static final int HEADER_SIZE = 6;
     private static final int MAX_SIZE = 65536;
 
+    private static final byte SEPARATOR = 0x00;
+
     private ChatRoomConfig config;
     private Cipher c;
     private int id = 1;
@@ -77,7 +79,7 @@ public class STGCMulticastSocket extends MulticastSocket {
 
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         outputStream.write(header);
-        outputStream.write(0);
+        outputStream.write(SEPARATOR);
         outputStream.write(payload);
 
         //Setting encrypted data and length to packet
@@ -155,13 +157,13 @@ public class STGCMulticastSocket extends MulticastSocket {
             byte[] painText = packet.getData();
 
             mp.write(Integer.toString(id).getBytes());
-            mp.write(0);
+            mp.write(SEPARATOR);
             mp.write(nonceByte);
-            mp.write(0);
+            mp.write(SEPARATOR);
             mp.write(painText);
 
             //Create hash of mp
-            Mac hMac = Mac.getInstance("HMacSHA1", "BC");
+            Mac hMac = Mac.getInstance(config.getMac(), config.getProvider());
             Key hMacKey = getKeyFromKeyStore("JCEKS", "mykeystore.jks", "macInKey", "password".toCharArray(), "password".toCharArray());
 
             hMac.init(hMacKey);
@@ -175,7 +177,7 @@ public class STGCMulticastSocket extends MulticastSocket {
             byte[] ecryptedCore = c.doFinal(mp.toByteArray());
 
             //Create hash for core
-            Mac hMacOut = Mac.getInstance("HMacSHA1", "BC");
+            Mac hMacOut = Mac.getInstance(config.getMac(), config.getProvider());
             Key hMacKeyOut = getKeyFromKeyStore("JCEKS", "mykeystore.jks", "macOutKey", "password".toCharArray(), "password".toCharArray());
 
             hMacOut.init(hMacKeyOut);
@@ -199,7 +201,7 @@ public class STGCMulticastSocket extends MulticastSocket {
         try {
             int packetLength = packet.length;
 
-            Mac hMacOut = Mac.getInstance("HMacSHA1", "BC");
+            Mac hMacOut = Mac.getInstance(config.getMac(), config.getProvider());
             Key hMacKey = getKeyFromKeyStore("JCEKS", "mykeystore.jks", "macOutKey", "password".toCharArray(), "password".toCharArray());
 
 
@@ -217,7 +219,7 @@ public class STGCMulticastSocket extends MulticastSocket {
             byte[] content = c.doFinal(packet, 0, (packet.length - hMacOut.getMacLength()));
 
 
-            Mac hMacIn = Mac.getInstance("HMacSHA1", "BC");
+            Mac hMacIn = Mac.getInstance(config.getMac(), config.getProvider());
             Key hMacInKey = getKeyFromKeyStore("JCEKS", "mykeystore.jks", "macInKey", "password".toCharArray(), "password".toCharArray());
 
             byte[] hMacInString = new byte[hMacIn.getMacLength()];
@@ -237,7 +239,7 @@ public class STGCMulticastSocket extends MulticastSocket {
             byte[] actualMessage = new byte[MAX_SIZE];
             int counter = 0;
             for (int i = 0; i < messageBytes.length; i++) {
-                if (messageBytes[i] == 0) {
+                if (messageBytes[i] == SEPARATOR) {
                     counter++;
                 }
                 if (counter == 2) {
@@ -266,5 +268,11 @@ public class STGCMulticastSocket extends MulticastSocket {
 
     private byte[] generateNounce() {
         return Nonce.randomString().getBytes();
+    }
+
+    private List separate (byte[] array) {
+
+
+        return new ArrayList();
     }
 }

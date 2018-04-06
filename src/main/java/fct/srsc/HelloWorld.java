@@ -7,17 +7,17 @@ import org.yaml.snakeyaml.Yaml;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.security.SecureRandom;
 
 public class HelloWorld {
 
 
     public static void main(String[] args) throws IOException {
 
-        short c = 1;
+        SecureRandom sr = new SecureRandom();
+        byte [] nonce = new byte[512];
+        sr.nextBytes(nonce);
 
-        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        outputStream.write(c);
-
-        System.out.println(outputStream.toByteArray().length);
+        System.out.println(new String(nonce));
     }
 }

@@ -61,16 +61,15 @@ public class STGCMulticastSocket extends MulticastSocket {
         try {
         	Key key64 = getKeyFromKeyStore("JCEKS", "mykeystore.jks", "mykey1", "password".toCharArray(), "password".toCharArray());
         	    
-            byte[] payload = buildPayload(key64, packet);//c.doFinal(packet.getData());
+            byte[] payload = encodePayload(key64, packet);//c.doFinal(packet.getData());
 
             byte[] header = buildHeader(payload.length);
-            System.out.println("header size: " + header.length);
-            
+          
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             outputStream.write(header);
             outputStream.write(0);
             outputStream.write(payload);
-            
+         
             //Setting encrypted data and length to packet
             packet.setData(outputStream.toByteArray());
             packet.setLength(outputStream.size());
@@ -91,13 +90,14 @@ public class STGCMulticastSocket extends MulticastSocket {
 
             super.receive(p);
             Key key64 = getKeyFromKeyStore("JCEKS", "mykeystore.jks", "mykey1", "password".toCharArray(), "password".toCharArray());
-            c.init(Cipher.DECRYPT_MODE, key64);
-
+         
             //Header size + 1 because of the delimiter between header/payload (6 bytes of header + 1 delimiter)
-            byte[] enc = c.doFinal(Arrays.copyOfRange(p.getData(), HEADER_SIZE + 1, p.getLength()));
-
-            packet.setLength(enc.length);
-            packet.setData(enc);
+            byte[] enc = Arrays.copyOfRange(p.getData(), HEADER_SIZE + 1, p.getLength());
+            
+            byte[] test = decodePayload(key64, enc);
+       
+            packet.setLength(test.length);
+            packet.setData(test);
 
         } catch (Exception e) {
             System.out.println("Message not received/decrypted. An error occured");
@@ -114,8 +114,7 @@ public class STGCMulticastSocket extends MulticastSocket {
             keyStore.load(stream, keyStorePassword);
 
             Key key1 = keyStore.getKey(key, keyPassword);
-            System.out.println(Base64.getEncoder().encodeToString(key1.getEncoded()));
-
+    
             return key1;
         }
         catch(Exception e) {
@@ -133,6 +132,7 @@ public class STGCMulticastSocket extends MulticastSocket {
         outputStream.write(PAYLOAD_TYPE.getBytes());
 
         outputStream.write(0);
+ 
         outputStream.write((short) payloadSize);
 
         assert outputStream.toByteArray().length == HEADER_SIZE;
@@ -140,11 +140,9 @@ public class STGCMulticastSocket extends MulticastSocket {
         return outputStream.toByteArray();
     }
     
-   private byte [] buildPayload (Key key, DatagramPacket packet) throws IOException {
+   private byte [] encodePayload (Key key, DatagramPacket packet) throws IOException {
         
     try {
-    	  //needed?  
-        Cipher c2 = c; 
     	
         //Build mp, id nonce and message
     	ByteArrayOutputStream mp = new ByteArrayOutputStream();
@@ -153,8 +151,8 @@ public class STGCMulticastSocket extends MulticastSocket {
         byte[] nonceByte = dateTimeString.getBytes();
         byte[] painText = packet.getData();
         
-        mp.write(id);
-        mp.write(nonceByte);
+        //mp.write(id);
+        //mp.write(nonceByte);
         mp.write(painText);
         
         //Cipher mp
@@ -163,8 +161,8 @@ public class STGCMulticastSocket extends MulticastSocket {
         
         //Create hash of mp
         Mac hMac = Mac.getInstance("HMacSHA1", "BC");
-        Key hMacKey = new SecretKeySpec(key.getEncoded(), "HMacSHA1");
-        
+        Key hMacKey = getKeyFromKeyStore("JCEKS", "mykeystore.jks", "macInKey", "password".toCharArray(), "password".toCharArray());
+           
         hMac.init(hMacKey);
         hMac.update(mp.toByteArray()); 
         
@@ -179,12 +177,12 @@ public class STGCMulticastSocket extends MulticastSocket {
         core.write(mpMac.toByteArray());
         
         //Cipher core
-        c2.init(Cipher.ENCRYPT_MODE, key);
-        byte[] ecryptedCore = c2.doFinal(core.toByteArray());
+        c.init(Cipher.ENCRYPT_MODE, key);
+        byte[] ecryptedCore = c.doFinal(core.toByteArray());
         
         //Create hash for core
         Mac hMacOut = Mac.getInstance("HMacSHA1", "BC");
-        Key hMacKeyOut = new SecretKeySpec(key.getEncoded(), "HMacSHA1");
+        Key hMacKeyOut = getKeyFromKeyStore("JCEKS", "mykeystore.jks", "macOutKey", "password".toCharArray(), "password".toCharArray());
         
         hMacOut.init(hMacKeyOut);
         hMacOut.update(ecryptedCore); 
@@ -194,8 +192,6 @@ public class STGCMulticastSocket extends MulticastSocket {
         full.write(ecryptedCore);
         full.write(hMacOut.doFinal());
         
-        System.out.println("cipher text -> " +Base64.getEncoder().encodeToString(full.toByteArray()));
-        
         return full.toByteArray();
     }
     catch(Exception e) {
@@ -204,4 +200,62 @@ public class STGCMulticastSocket extends MulticastSocket {
     	
        return null;
     }
+   
+   private byte [] decodePayload (Key key, byte[] packet) throws IOException {
+       
+	    try {
+	    	int packetLength = packet.length;
+	    	
+	    	Mac hMacOut = Mac.getInstance("HMacSHA1", "BC");
+	    	Key hMacKey = getKeyFromKeyStore("JCEKS", "mykeystore.jks", "macOutKey", "password".toCharArray(), "password".toCharArray());
+	    	
+	    	
+	    	byte[] hMacString = new byte[hMacOut.getMacLength()];
+	    	System.arraycopy(packet, packetLength - hMacOut.getMacLength() , hMacString, 0, hMacOut.getMacLength());  
+	
+	    	hMacOut.init(hMacKey);
+	    	hMacOut.update(packet, 0, (packet.length-hMacOut.getMacLength()));
+	    	
+	    	if(MessageDigest.isEqual(hMacOut.doFinal(), hMacString)) {
+	    		System.out.println("Allowed to decode");
+	    	}
+	    	else {
+	    		System.out.println("Not Allowed to decode");
+	    		String error =	"Packet Corrupted!";
+	    		return error.getBytes();
+	    	}
+	    	
+            c.init(Cipher.DECRYPT_MODE, key);
+	    	
+            byte[] content = c.doFinal(packet, 0, (packet.length-hMacOut.getMacLength()));
+	    	
+            
+            Mac hMacIn = Mac.getInstance("HMacSHA1", "BC");
+	    	Key hMacInKey = getKeyFromKeyStore("JCEKS", "mykeystore.jks", "macInKey", "password".toCharArray(), "password".toCharArray());
+	    	
+            byte[] hMacInString = new byte[hMacIn.getMacLength()];
+	    	
+            System.arraycopy(content, content.length - hMacIn.getMacLength() , hMacInString, 0, hMacIn.getMacLength());  
+	    	
+
+	    	hMacIn.init(hMacInKey);
+	    	hMacIn.update(content, 0, (content.length-hMacIn.getMacLength()));
+	    	System.out.println("hash --> " + Base64.getEncoder().encodeToString(hMacIn.doFinal()));
+	    	System.out.println("real --> " + Base64.getEncoder().encodeToString(content));
+	    	if(MessageDigest.isEqual(hMacIn.doFinal(), hMacInString)) {
+	    		System.out.println("Allowed to decode");
+	    	}
+	    	else {
+	    		String error =	"Message Corrupted!";
+	    		return error.getBytes();
+	    	}
+	    	
+	        return hMacString;
+	    }
+	    catch(Exception e) {
+	    	System.out.println(e);
+	    }
+	    	
+	       return null;
+	    }
 }

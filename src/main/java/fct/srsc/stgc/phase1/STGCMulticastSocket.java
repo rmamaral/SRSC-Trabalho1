@@ -95,9 +95,10 @@ public class STGCMulticastSocket extends MulticastSocket {
             byte[] enc = Arrays.copyOfRange(p.getData(), HEADER_SIZE + 1, p.getLength());
             
             byte[] message = decodePayload(key64, enc);
+            System.out.println("Message: " + new String(message));
 
+            packet.setData(Arrays.copyOfRange(message, 0, 65536));
             packet.setLength(message.length);
-            packet.setData(message);
 
         } catch (Exception e) {
             System.out.println("Message not received/decrypted. An error occured");

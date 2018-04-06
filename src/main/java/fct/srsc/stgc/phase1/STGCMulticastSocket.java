@@ -94,10 +94,10 @@ public class STGCMulticastSocket extends MulticastSocket {
             //Header size + 1 because of the delimiter between header/payload (6 bytes of header + 1 delimiter)
             byte[] enc = Arrays.copyOfRange(p.getData(), HEADER_SIZE + 1, p.getLength());
             
-            byte[] test = decodePayload(key64, enc);
-       
-            packet.setLength(test.length);
-            packet.setData(test);
+            byte[] message = decodePayload(key64, enc);
+
+            packet.setLength(message.length);
+            packet.setData(message);
 
         } catch (Exception e) {
             System.out.println("Message not received/decrypted. An error occured");
@@ -150,8 +150,8 @@ public class STGCMulticastSocket extends MulticastSocket {
         String dateTimeString = Long.toString(new Date().getTime());
         byte[] nonceByte = dateTimeString.getBytes();
         byte[] painText = packet.getData();
-        
-        mp.write(id);
+
+        mp.write(Integer.toString(id).getBytes());
         mp.write('|');
         mp.write(nonceByte);
         mp.write('|');
@@ -239,12 +239,13 @@ public class STGCMulticastSocket extends MulticastSocket {
 	    		String error =	"Message Corrupted!";
 	    		return error.getBytes();
 	    	}
-	    	
-	    	byte[] message = new byte[content.length - hMacIn.getMacLength()+1];
-	    	
-            System.arraycopy(content, 0 , message, 0, content.length - hMacIn.getMacLength());  
-	    	
-	        return content;
+
+	    	String messageParts = new String (Arrays.copyOfRange(content, 0 , content.length - hMacIn.getMacLength()));
+	    	String message = messageParts.split("\\|")[2];
+
+            return message.getBytes();
+
+	        //return content;
 	    }
 	    catch(Exception e) {
 	    	System.out.println(e);

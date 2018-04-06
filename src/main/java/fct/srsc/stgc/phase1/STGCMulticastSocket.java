@@ -34,7 +34,7 @@ public class STGCMulticastSocket extends MulticastSocket {
 
     private ChatRoomConfig config;
     private Cipher c;
-    private int id = 0;
+    private int id = 1;
 
     public STGCMulticastSocket(String groupAddress) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException {
         super();
@@ -152,7 +152,9 @@ public class STGCMulticastSocket extends MulticastSocket {
         byte[] painText = packet.getData();
         
         mp.write(id);
+        mp.write('|');
         mp.write(nonceByte);
+        mp.write('|');
         mp.write(painText);
         
         //Create hash of mp
@@ -238,7 +240,7 @@ public class STGCMulticastSocket extends MulticastSocket {
 	    		return error.getBytes();
 	    	}
 	    	
-	    	byte[] message = new byte[content.length - hMacIn.getMacLength()];
+	    	byte[] message = new byte[content.length - hMacIn.getMacLength()+1];
 	    	
             System.arraycopy(content, 0 , message, 0, content.length - hMacIn.getMacLength());  
 	    	

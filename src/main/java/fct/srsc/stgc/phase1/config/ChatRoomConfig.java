@@ -7,22 +7,28 @@ public class ChatRoomConfig {
     private String provider;
     private String keySize;
     private String keyValue;
-    private String mac;
-    private String macKeySize;
-    private String macKeyValue;
+    private String macKm;
+    private String macKmKeySize;
+    private String macKmKeyValue;
+    private String macKa;
+    private String macKaKeySize;
+    private String macKaKeyValue;
 
     public ChatRoomConfig() {
     }
 
-    public ChatRoomConfig(String ip, String ciphersuite, String provider, String keySize, String keyValue, String mac, String macKeySize, String macKeyValue) {
+    public ChatRoomConfig(String ip, String ciphersuite, String provider, String keySize, String keyValue, String macKm, String macKmKeySize, String macKmKeyValue, String macKa, String macKaKeySize, String macKaKeyValue) {
         this.ip = ip;
         this.ciphersuite = ciphersuite;
         this.provider = provider;
         this.keySize = keySize;
         this.keyValue = keyValue;
-        this.mac = mac;
-        this.macKeySize = macKeySize;
-        this.macKeyValue = macKeyValue;
+        this.macKm = macKm;
+        this.macKmKeySize = macKmKeySize;
+        this.macKmKeyValue = macKmKeyValue;
+        this.macKa = macKa;
+        this.macKaKeySize = macKaKeySize;
+        this.macKaKeyValue = macKaKeyValue;
     }
 
     public String getIp() {
@@ -65,28 +71,52 @@ public class ChatRoomConfig {
         this.keyValue = keyValue;
     }
 
-    public String getMac() {
-        return mac;
+    public String getMacKm() {
+        return macKm;
     }
 
-    public void setMac(String mac) {
-        this.mac = mac;
+    public void setMacKm(String macKm) {
+        this.macKm = macKm;
     }
 
-    public String getMacKeySize() {
-        return macKeySize;
+    public String getMacKmKeySize() {
+        return macKmKeySize;
     }
 
-    public void setMacKeySize(String macKeySize) {
-        this.macKeySize = macKeySize;
+    public void setMacKmKeySize(String macKmKeySize) {
+        this.macKmKeySize = macKmKeySize;
     }
 
-    public String getMacKeyValue() {
-        return macKeyValue;
+    public String getMacKmKeyValue() {
+        return macKmKeyValue;
     }
 
-    public void setMacKeyValue(String macKeyValue) {
-        this.macKeyValue = macKeyValue;
+    public void setMacKmKeyValue(String macKmKeyValue) {
+        this.macKmKeyValue = macKmKeyValue;
+    }
+
+    public String getMacKa() {
+        return macKa;
+    }
+
+    public void setMacKa(String macKa) {
+        this.macKa = macKa;
+    }
+
+    public String getMacKaKeySize() {
+        return macKaKeySize;
+    }
+
+    public void setMacKaKeySize(String macKaKeySize) {
+        this.macKaKeySize = macKaKeySize;
+    }
+
+    public String getMacKaKeyValue() {
+        return macKaKeyValue;
+    }
+
+    public void setMacKaKeyValue(String macKaKeyValue) {
+        this.macKaKeyValue = macKaKeyValue;
     }
 }
 

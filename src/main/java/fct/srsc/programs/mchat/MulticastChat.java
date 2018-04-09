@@ -3,10 +3,15 @@ package fct.srsc.programs.mchat;
 // MulticastChat.java
 // Objecto que representa um chat Multicast
 
+import fct.srsc.stgc.phase1.STGCMulticastSocket;
+
+import javax.crypto.NoSuchPaddingException;
 import java.io.*;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
+import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
 
 public class MulticastChat extends Thread {
 
@@ -47,7 +52,7 @@ public class MulticastChat extends Thread {
 
     public MulticastChat(String username, InetAddress group, int port,
                          int ttl,
-                         MulticastChatEventListener listener) throws IOException {
+                         MulticastChatEventListener listener) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException {
 
         this.username = username;
         this.group = group;
@@ -55,7 +60,7 @@ public class MulticastChat extends Thread {
         isActive = true;
 
         // create & configure multicast socket
-        msocket = new MulticastSocket(port);
+        msocket = new STGCMulticastSocket("238.69.69.69", port);
         msocket.setSoTimeout(DEFAULT_SOCKET_TIMEOUT_MILLIS);
         msocket.setTimeToLive(ttl);
         msocket.joinGroup(group);
@@ -107,6 +112,8 @@ public class MulticastChat extends Thread {
         try {
             listener.chatParticipantJoined(name, address, port);
         } catch (Throwable e) {
+            System.out.println("BADJORAZZ");
+            e.printStackTrace();
         }
     }
 

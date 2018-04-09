@@ -3,6 +3,7 @@ package fct.srsc.programs.mchat;
 // MChatCliente.java
 // 
 
+import javax.crypto.NoSuchPaddingException;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
@@ -11,6 +12,8 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.IOException;
 import java.net.InetAddress;
+import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
 import java.util.Enumeration;
 import java.util.Iterator;
 
@@ -177,7 +180,7 @@ public class MChatCliente extends JFrame implements MulticastChatEventListener {
 
     // Configuracao do grupo multicast da sessao de chat na interface do cliente
     public void join(String username, InetAddress group, int port,
-                     int ttl) throws IOException {
+                     int ttl) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException {
         setTitle("CHAT MulticastIP " + username + "@" + group.getHostAddress()
                 + ":" + port + " [TTL=" + ttl + "]");
 

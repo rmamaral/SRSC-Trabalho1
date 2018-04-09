@@ -2,6 +2,9 @@ package fct.srsc.stgc.phase1;
 
 import fct.srsc.stgc.phase1.config.ChatRoomConfig;
 import fct.srsc.stgc.phase1.config.ReadFromConfig;
+import fct.srsc.stgc.phase1.exceptions.DuplicatedNonceException;
+import fct.srsc.stgc.phase1.exceptions.MessageIntegrityBrokenException;
+import fct.srsc.stgc.phase1.utils.Nonce;
 
 import javax.crypto.Cipher;
 import javax.crypto.Mac;
@@ -20,9 +23,12 @@ import java.security.KeyStore;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
+import java.security.SecureRandom;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Date;
+import java.util.List;
 
 public class STGCMulticastSocket extends MulticastSocket {
 
@@ -31,79 +37,78 @@ public class STGCMulticastSocket extends MulticastSocket {
     private static final String PAYLOAD_TYPE = "M";
 
     private static final int HEADER_SIZE = 6;
+    private static final int MAX_SIZE = 65536;
+
+    private static final byte SEPARATOR = 0x00;
 
     private ChatRoomConfig config;
     private Cipher c;
     private int id = 1;
+    private List<String> nounceList;
 
     public STGCMulticastSocket(String groupAddress) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException {
         super();
-        config = ReadFromConfig.readFromConfig(groupAddress);
-        c = Cipher.getInstance(config.getCiphersuite(), config.getProvider());
+        init(groupAddress);
     }
 
     public STGCMulticastSocket(String groupAddress, int port) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException {
         super(port);
-        config = ReadFromConfig.readFromConfig(groupAddress);
-        c = Cipher.getInstance(config.getCiphersuite(), config.getProvider());
+        init(groupAddress);
     }
 
     public STGCMulticastSocket(String groupAddress, SocketAddress bindAdrress) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException {
         super(bindAdrress);
+        init(groupAddress);
+    }
+
+    private void init(String groupAddress) throws NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException {
         config = ReadFromConfig.readFromConfig(groupAddress);
         c = Cipher.getInstance(config.getCiphersuite(), config.getProvider());
+        nounceList = new ArrayList<String>();
     }
 
     @Override
     public void send(DatagramPacket packet) throws IOException {
         System.out.println("Sending message through secure channel");
 
-        try {
-        	Key key64 = getKeyFromKeyStore("JCEKS", "mykeystore.jks", "mykey1", "password".toCharArray(), "password".toCharArray());
-        	    
-            byte[] payload = encodePayload(key64, packet);//c.doFinal(packet.getData());
+        Key key64 = getKeyFromKeyStore("JCEKS", "mykeystore.jks", "mykey1", "password".toCharArray(), "password".toCharArray());
 
-            byte[] header = buildHeader(payload.length);
-          
-            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-            outputStream.write(header);
-            outputStream.write(0);
-            outputStream.write(payload);
-         
-            //Setting encrypted data and length to packet
-            packet.setData(outputStream.toByteArray());
-            packet.setLength(outputStream.size());
+        byte[] payload = encodePayload(key64, packet);//c.doFinal(packet.getData());
 
-            super.send(packet);
-        } catch (Exception e) {
-            System.out.println("Message not sent. An error occured");
-            e.printStackTrace();
-        }
+        byte[] header = buildHeader(payload.length);
+
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        outputStream.write(header);
+        outputStream.write(SEPARATOR);
+        outputStream.write(payload);
+
+        //Setting encrypted data and length to packet
+        packet.setData(outputStream.toByteArray());
+        packet.setLength(outputStream.size());
+
+        super.send(packet);
     }
 
     @Override
-    public void receive(DatagramPacket packet) {
+    public void receive(DatagramPacket packet) throws IOException {
         System.out.println("Receiving message through secure channel");
 
-        try {
-            DatagramPacket p = new DatagramPacket(new byte[65536], 65536);
+        DatagramPacket p = new DatagramPacket(new byte[MAX_SIZE], MAX_SIZE);
 
-            super.receive(p);
-            Key key64 = getKeyFromKeyStore("JCEKS", "mykeystore.jks", "mykey1", "password".toCharArray(), "password".toCharArray());
-         
-            //Header size + 1 because of the delimiter between header/payload (6 bytes of header + 1 delimiter)
-            byte[] enc = Arrays.copyOfRange(p.getData(), HEADER_SIZE + 1, p.getLength());
-            
-            byte[] message = decodePayload(key64, enc);
-            System.out.println("Message: " + new String(message));
+        super.receive(p);
 
-            packet.setData(Arrays.copyOfRange(message, 0, 65536));
-            packet.setLength(message.length);
+        Key key64 = getKeyFromKeyStore("JCEKS", "mykeystore.jks", "mykey1", "password".toCharArray(), "password".toCharArray());
 
-        } catch (Exception e) {
-            System.out.println("Message not received/decrypted. An error occured");
-            e.printStackTrace();
-        }
+        //Header size + 1 because of the delimiter between header/payload (6 bytes of header + 1 delimiter)
+        byte[] enc = Arrays.copyOfRange(p.getData(), HEADER_SIZE + 1, p.getLength());
+
+        byte[] message = decodePayload(key64, enc);
+
+        packet.setData(Arrays.copyOfRange(message, 0, MAX_SIZE));
+        packet.setLength(message.length);
+
+        packet.setAddress(p.getAddress());
+        packet.setPort(p.getPort());
     }
 
     private Key getKeyFromKeyStore(String type, String keystore, String key, char[] keyPassword, char[] keyStorePassword) {
@@ -115,15 +120,14 @@ public class STGCMulticastSocket extends MulticastSocket {
             keyStore.load(stream, keyStorePassword);
 
             Key key1 = keyStore.getKey(key, keyPassword);
-    
+
             return key1;
-        }
-        catch(Exception e) {
+        } catch (Exception e) {
             return null;
         }
     }
 
-    private byte [] buildHeader (int payloadSize) throws IOException {
+    private byte[] buildHeader(int payloadSize) throws IOException {
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
 
         outputStream.write(VERSION.getBytes());
@@ -133,125 +137,142 @@ public class STGCMulticastSocket extends MulticastSocket {
         outputStream.write(PAYLOAD_TYPE.getBytes());
 
         outputStream.write(0);
- 
+
         outputStream.write((short) payloadSize);
 
         assert outputStream.toByteArray().length == HEADER_SIZE;
 
         return outputStream.toByteArray();
     }
-    
-   private byte [] encodePayload (Key key, DatagramPacket packet) throws IOException {
-        
-    try {
-    	
-        //Build mp, id nonce and message
-    	ByteArrayOutputStream mp = new ByteArrayOutputStream();
-        
-        String dateTimeString = Long.toString(new Date().getTime());
-        byte[] nonceByte = dateTimeString.getBytes();
-        byte[] painText = packet.getData();
 
-        mp.write(Integer.toString(id).getBytes());
-        mp.write('|');
-        mp.write(nonceByte);
-        mp.write('|');
-        mp.write(painText);
-        
-        //Create hash of mp
-        Mac hMac = Mac.getInstance("HMacSHA1", "BC");
-        Key hMacKey = getKeyFromKeyStore("JCEKS", "mykeystore.jks", "macInKey", "password".toCharArray(), "password".toCharArray());
-           
-        hMac.init(hMacKey);
-        hMac.update(mp.toByteArray()); 
-        
-        //Add mp hash
-        mp.write(hMac.doFinal());
-        
-        //Cipher mp + hash
-        c.init(Cipher.ENCRYPT_MODE, key);        
-        byte[] ecryptedCore = c.doFinal(mp.toByteArray());
-        
-        //Create hash for core
-        Mac hMacOut = Mac.getInstance("HMacSHA1", "BC");
-        Key hMacKeyOut = getKeyFromKeyStore("JCEKS", "mykeystore.jks", "macOutKey", "password".toCharArray(), "password".toCharArray());
-        
-        hMacOut.init(hMacKeyOut);
-        hMacOut.update(ecryptedCore); 
-        
-        //Build final 
-        ByteArrayOutputStream full = new ByteArrayOutputStream(); 
-        full.write(ecryptedCore);
-        full.write(hMacOut.doFinal());
-        
-        return full.toByteArray();
+    private byte[] encodePayload(Key key, DatagramPacket packet) throws IOException {
+
+        try {
+
+            //Build mp, id nonce and message
+            ByteArrayOutputStream mp = new ByteArrayOutputStream();
+
+            String dateTimeString = Long.toString(new Date().getTime());
+            byte[] nonceByte = generateNounce();
+            byte[] painText = packet.getData();
+
+            mp.write(Integer.toString(id).getBytes());
+            mp.write(SEPARATOR);
+            mp.write(nonceByte);
+            mp.write(SEPARATOR);
+            mp.write(painText);
+
+            //Create hash of mp
+            Mac hMac = Mac.getInstance(config.getMac(), config.getProvider());
+            Key hMacKey = getKeyFromKeyStore("JCEKS", "mykeystore.jks", "macInKey", "password".toCharArray(), "password".toCharArray());
+
+            hMac.init(hMacKey);
+            hMac.update(mp.toByteArray());
+
+            //Add mp hash
+            mp.write(hMac.doFinal());
+
+            //Cipher mp + hash
+            c.init(Cipher.ENCRYPT_MODE, key);
+            byte[] ecryptedCore = c.doFinal(mp.toByteArray());
+
+            //Create hash for core
+            Mac hMacOut = Mac.getInstance(config.getMac(), config.getProvider());
+            Key hMacKeyOut = getKeyFromKeyStore("JCEKS", "mykeystore.jks", "macOutKey", "password".toCharArray(), "password".toCharArray());
+
+            hMacOut.init(hMacKeyOut);
+            hMacOut.update(ecryptedCore);
+
+            //Build final
+            ByteArrayOutputStream full = new ByteArrayOutputStream();
+            full.write(ecryptedCore);
+            full.write(hMacOut.doFinal());
+
+            return full.toByteArray();
+        } catch (Exception e) {
+            System.out.println(e);
+        }
+
+        return null;
     }
-    catch(Exception e) {
-    	System.out.println(e);
-    }
-    	
-       return null;
-    }
-   
-   private byte [] decodePayload (Key key, byte[] packet) throws IOException {
-       
-	    try {
-	    	int packetLength = packet.length;
-	    	
-	    	Mac hMacOut = Mac.getInstance("HMacSHA1", "BC");
-	    	Key hMacKey = getKeyFromKeyStore("JCEKS", "mykeystore.jks", "macOutKey", "password".toCharArray(), "password".toCharArray());
-	    	
-	    	
-	    	byte[] hMacString = new byte[hMacOut.getMacLength()];
-	    	System.arraycopy(packet, packetLength - hMacOut.getMacLength() , hMacString, 0, hMacOut.getMacLength());  
-	
-	    	hMacOut.init(hMacKey);
-	    	hMacOut.update(packet, 0, (packet.length-hMacOut.getMacLength()));
-	    	
-	    	if(MessageDigest.isEqual(hMacOut.doFinal(), hMacString)) {
-	    		System.out.println("Allowed to decode");
-	    	}
-	    	else {
-	    		System.out.println("Not Allowed to decode");
-	    		String error =	"Packet Corrupted!";
-	    		return error.getBytes();
-	    	}
-	    	
+
+    private byte[] decodePayload(Key key, byte[] packet) throws IOException {
+
+        try {
+            int packetLength = packet.length;
+
+            Mac hMacOut = Mac.getInstance(config.getMac(), config.getProvider());
+            Key hMacKey = getKeyFromKeyStore("JCEKS", "mykeystore.jks", "macOutKey", "password".toCharArray(), "password".toCharArray());
+
+
+            byte[] hMacString = new byte[hMacOut.getMacLength()];
+            System.arraycopy(packet, packetLength - hMacOut.getMacLength(), hMacString, 0, hMacOut.getMacLength());
+
+            hMacOut.init(hMacKey);
+            hMacOut.update(packet, 0, (packet.length - hMacOut.getMacLength()));
+
+            if (!MessageDigest.isEqual(hMacOut.doFinal(), hMacString))
+                throw new MessageIntegrityBrokenException();
+
             c.init(Cipher.DECRYPT_MODE, key);
-	    	
-            byte[] content = c.doFinal(packet, 0, (packet.length-hMacOut.getMacLength()));
-	    	
-            
-            Mac hMacIn = Mac.getInstance("HMacSHA1", "BC");
-	    	Key hMacInKey = getKeyFromKeyStore("JCEKS", "mykeystore.jks", "macInKey", "password".toCharArray(), "password".toCharArray());
-	    	
+
+            byte[] content = c.doFinal(packet, 0, (packet.length - hMacOut.getMacLength()));
+
+
+            Mac hMacIn = Mac.getInstance(config.getMac(), config.getProvider());
+            Key hMacInKey = getKeyFromKeyStore("JCEKS", "mykeystore.jks", "macInKey", "password".toCharArray(), "password".toCharArray());
+
             byte[] hMacInString = new byte[hMacIn.getMacLength()];
-	    	
-            System.arraycopy(content, content.length - hMacIn.getMacLength() , hMacInString, 0, hMacIn.getMacLength());  
-	    	
 
-	    	hMacIn.init(hMacInKey);
-	    	hMacIn.update(content, 0, (content.length-hMacIn.getMacLength()));
-	    	
-	    	if(MessageDigest.isEqual(hMacIn.doFinal(), hMacInString)) {
-	    		System.out.println("Allowed to decode");
-	    	}
-	    	else {
-	    		String error =	"Message Corrupted!";
-	    		return error.getBytes();
-	    	}
+            System.arraycopy(content, content.length - hMacIn.getMacLength(), hMacInString, 0, hMacIn.getMacLength());
 
-	    	String messageParts = new String (Arrays.copyOfRange(content, 0 , content.length - hMacIn.getMacLength()));
-	    	String message = messageParts.split("\\|")[2];
 
-            return message.getBytes();
+            hMacIn.init(hMacInKey);
+            hMacIn.update(content, 0, (content.length - hMacIn.getMacLength()));
 
-	        //return content;
-	    }
-	    catch(Exception e) {
-	    	System.out.println(e);
-	    }
-	    	
-	       return null;
-	    }
+            if (!MessageDigest.isEqual(hMacIn.doFinal(), hMacInString))
+                throw new MessageIntegrityBrokenException();
+
+
+            byte[] messageBytes = Arrays.copyOfRange(content, 0, content.length - hMacIn.getMacLength());
+
+            byte[] actualMessage = new byte[MAX_SIZE];
+            int counter = 0;
+            for (int i = 0; i < messageBytes.length; i++) {
+                if (messageBytes[i] == SEPARATOR) {
+                    counter++;
+                }
+                if (counter == 2) {
+                    actualMessage = Arrays.copyOfRange(messageBytes, i + 1, messageBytes.length);
+                    break;
+                }
+            }
+
+            /*String messageParts = new String(Arrays.copyOfRange(content, 0, content.length - hMacIn.getMacLength()));
+            String[] splitMsg = messageParts.split("\\|");
+
+            *//*if (!nounceList.contains(splitMsg[1]))
+                nounceList.add(splitMsg[1]);
+            else {
+                throw new DuplicatedNonceException();
+            }*/
+
+            //return splitMsg[2].getBytes();
+            return actualMessage;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    private byte[] generateNounce() {
+        return Nonce.randomString().getBytes();
+    }
+
+    private List separate (byte[] array) {
+
+
+        return new ArrayList();
+    }
 }

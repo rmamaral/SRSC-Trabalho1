@@ -12,10 +12,10 @@ configs:
     macKaKeySize: 256
     macKaKeyValue: null
 
-  - ip: 224.10.10.11
-    ciphersuite: blowfish/ECB/NoPadding
+  - ip: 238.69.69.69
+    ciphersuite: blowfish/ECB/PKCS5Padding
     provider: BC
-    keySize: 512
+    keySize: 256
     keyValue: null
     macKm: HMacSHA1
     macKmKeySize: 256
@@ -24,7 +24,7 @@ configs:
     macKaKeySize: 256
     macKaKeyValue: null
 
-  - ip: 238.69.69.69
+  - ip: 239.9.9.9
     ciphersuite: blowfish/ECB/PKCS5Padding
     provider: BC
     keySize: 256

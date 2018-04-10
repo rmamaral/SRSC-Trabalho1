@@ -11,23 +11,22 @@ import javax.crypto.NoSuchPaddingException;
 import fct.srsc.stgc.phase1.STGCMulticastSocket;
 
 public class AuthServer {
-	
+
 	public static void main(String[] args) throws NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException, IOException{
-		
+
 		String impc = args[0];
-		
 		MulticastSocket socket = new STGCMulticastSocket(impc, 8989, true);
-		
 		socket.joinGroup(socket.getInetAddress());
 
-        DatagramPacket p = new DatagramPacket(new byte[65536], 65536);
-        String msg;
+		DatagramPacket p = new DatagramPacket(new byte[65536], 65536);
+		String msg;
 
-        while(true){
-        	
-        }
-		
-        
-		
+		while(true){
+			p.setLength(65536); // resize with max size
+			socket.receive(p);
+		}
+
+
+
 	}
 }

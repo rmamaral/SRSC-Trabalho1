@@ -3,35 +3,35 @@ configs:
   - ip: 224.10.10.10
     ciphersuite: blowfish/ECB/PKCS5Padding
     provider: BC
-    keySize: 256
+    keySize: null
     keyValue: null
     macKm: HMacSHA1
-    macKmKeySize: 256
+    macKmKeySize: null
     macKmKeyValue: null
     macKa: HMacSHA1
-    macKaKeySize: 256
+    macKaKeySize: null
     macKaKeyValue: null
 
   - ip: 238.69.69.69
     ciphersuite: blowfish/ECB/PKCS5Padding
     provider: BC
-    keySize: 256
+    keySize: null
     keyValue: null
     macKm: HMacSHA1
-    macKmKeySize: 256
+    macKmKeySize: null
     macKmKeyValue: null
     macKa: HMacSHA1
-    macKaKeySize: 256
+    macKaKeySize: null
     macKaKeyValue: null
 
   - ip: 239.9.9.9
     ciphersuite: blowfish/ECB/PKCS5Padding
     provider: BC
-    keySize: 256
+    keySize: null
     keyValue: null
     macKm: HMacSHA1
-    macKmKeySize: 256
+    macKmKeySize: null
     macKmKeyValue: null
     macKa: HMacSHA1
-    macKaKeySize: 256
+    macKaKeySize: null
     macKaKeyValue: null

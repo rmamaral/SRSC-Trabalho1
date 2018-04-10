@@ -70,7 +70,7 @@ public class STGCMulticastSocket extends MulticastSocket {
     @Override
     public void send(DatagramPacket packet) throws IOException {
         System.out.println("Sending message through secure channel");
-
+        
         Key key64 = getKeyFromKeyStore("JCEKS", "mykeystore.jks", "mykey1", "password".toCharArray(), "password".toCharArray());
 
         byte[] payload = encodePayload(key64, packet);//c.doFinal(packet.getData());
@@ -154,7 +154,7 @@ public class STGCMulticastSocket extends MulticastSocket {
 
             String dateTimeString = Long.toString(new Date().getTime());
             byte[] nonceByte = generateNounce();
-            byte[] painText = packet.getData();
+            byte[] painText = Arrays.copyOf(packet.getData(), packet.getLength());
 
             mp.write(Integer.toString(id).getBytes());
             mp.write(SEPARATOR);

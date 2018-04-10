@@ -236,28 +236,32 @@ public class STGCMulticastSocket extends MulticastSocket {
 
             byte[] messageBytes = Arrays.copyOfRange(content, 0, content.length - hMacIn.getMacLength());
 
+            int nounceIndex = -1;
+            String nounce = null;
             byte[] actualMessage = new byte[MAX_SIZE];
+
             int counter = 0;
             for (int i = 0; i < messageBytes.length; i++) {
                 if (messageBytes[i] == SEPARATOR) {
                     counter++;
                 }
+                if (counter == 1 && nounceIndex==-1){
+                    nounceIndex = i;
+                }
+
                 if (counter == 2) {
+                    nounce = new String(Arrays.copyOfRange(messageBytes, nounceIndex+1, i));
                     actualMessage = Arrays.copyOfRange(messageBytes, i + 1, messageBytes.length);
                     break;
                 }
             }
 
-            /*String messageParts = new String(Arrays.copyOfRange(content, 0, content.length - hMacIn.getMacLength()));
-            String[] splitMsg = messageParts.split("\\|");
-
-            *//*if (!nounceList.contains(splitMsg[1]))
-                nounceList.add(splitMsg[1]);
+            if (!nounceList.contains(nounce))
+                nounceList.add(nounce);
             else {
                 throw new DuplicatedNonceException();
-            }*/
+            }
 
-            //return splitMsg[2].getBytes();
             return actualMessage;
 
         } catch (Exception e) {
@@ -268,11 +272,5 @@ public class STGCMulticastSocket extends MulticastSocket {
 
     private byte[] generateNounce() {
         return Nonce.randomString().getBytes();
-    }
-
-    private List separate (byte[] array) {
-
-
-        return new ArrayList();
     }
 }

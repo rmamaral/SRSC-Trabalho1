@@ -46,26 +46,31 @@ public class STGCMulticastSocket extends MulticastSocket {
     private int id = 1;
     private List<String> nounceList;
 
-    public STGCMulticastSocket(String groupAddress) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException {
+    public STGCMulticastSocket(String groupAddress, boolean authenticationServer) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException {
         super();
-        init(groupAddress);
+        init(groupAddress, authenticationServer);
     }
 
-    public STGCMulticastSocket(String groupAddress, int port) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException {
+    public STGCMulticastSocket(String groupAddress, int port, boolean authenticationServer) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException {
         super(port);
-        init(groupAddress);
+        init(groupAddress, authenticationServer);
     }
 
-    public STGCMulticastSocket(String groupAddress, SocketAddress bindAdrress) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException {
+    public STGCMulticastSocket(String groupAddress, SocketAddress bindAdrress, boolean authenticationServer) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException {
         super(bindAdrress);
-        init(groupAddress);
+        init(groupAddress, authenticationServer);
     }
 
-    private void init(String groupAddress) throws NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException {
-        config = ReadFromConfig.readFromConfig(groupAddress);
+    private void init(String groupAddress, boolean authenticationServer) throws NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException {
+    	config = ReadFromConfig.readFromConfig(groupAddress);
+        
+        if(authenticationServer)
+        	System.out.println("authServer: " + authenticationServer);
+        
         c = Cipher.getInstance(config.getCiphersuite(), config.getProvider());
         nounceList = new ArrayList<String>();
     }
+    
 
     @Override
     public void send(DatagramPacket packet) throws IOException {
@@ -245,7 +250,7 @@ public class STGCMulticastSocket extends MulticastSocket {
                 if (messageBytes[i] == SEPARATOR) {
                     counter++;
                 }
-                if (counter == 1 && nounceIndex==-1){
+                if (counter == 1 && nounceIndex == -1){
                     nounceIndex = i;
                 }
 

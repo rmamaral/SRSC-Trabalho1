@@ -60,7 +60,7 @@ public class MulticastChat extends Thread {
         isActive = true;
 
         // create & configure multicast socket
-        msocket = new STGCMulticastSocket("238.69.69.69", port);
+        msocket = new STGCMulticastSocket("238.69.69.69", port, false);
         msocket.setSoTimeout(DEFAULT_SOCKET_TIMEOUT_MILLIS);
         msocket.setTimeToLive(ttl);
         msocket.joinGroup(group);

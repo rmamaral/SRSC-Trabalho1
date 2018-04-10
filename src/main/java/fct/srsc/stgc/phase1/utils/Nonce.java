@@ -5,7 +5,7 @@ import java.util.Random;
 
 public class Nonce {
 
-    private final static String AB = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-/?!_.,:;(){}[]";
+    private final static String AB = "123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-/?!_.,:;(){}[]";
     private final static int nonceLength = 20;
     private static Random rnd = new SecureRandom();
 

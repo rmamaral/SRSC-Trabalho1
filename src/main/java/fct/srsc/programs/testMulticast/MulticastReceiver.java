@@ -22,7 +22,7 @@ public class MulticastReceiver {
             System.exit(0);
         }
 
-        MulticastSocket rs = new STGCMulticastSocket(args[0], port, false);
+        MulticastSocket rs = new STGCMulticastSocket(args[0], port, false, args[2]);
 
         rs.joinGroup(group);
 

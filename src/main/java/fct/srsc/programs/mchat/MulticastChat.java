@@ -12,6 +12,7 @@ import java.net.InetAddress;
 import java.net.MulticastSocket;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
+import java.security.spec.InvalidKeySpecException;
 
 public class MulticastChat extends Thread {
 
@@ -52,7 +53,7 @@ public class MulticastChat extends Thread {
 
     public MulticastChat(String username, InetAddress group, int port,
                          int ttl,
-                         MulticastChatEventListener listener) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException {
+                         MulticastChatEventListener listener) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException, InvalidKeySpecException {
 
         this.username = username;
         this.group = group;
@@ -60,7 +61,7 @@ public class MulticastChat extends Thread {
         isActive = true;
 
         // create & configure multicast socket
-        msocket = new STGCMulticastSocket("238.69.69.69", port, false);
+        msocket = new STGCMulticastSocket("238.69.69.69", port, false, username);
         msocket.setSoTimeout(DEFAULT_SOCKET_TIMEOUT_MILLIS);
         msocket.setTimeToLive(ttl);
         msocket.joinGroup(group);

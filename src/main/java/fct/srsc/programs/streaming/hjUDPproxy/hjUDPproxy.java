@@ -27,14 +27,14 @@ import java.util.stream.Collectors;
 
 class hjUDPproxy {
     public static void main(String[] args) throws Exception {
-        InputStream inputStream = new FileInputStream("config.properties");
+        InputStream inputStream = new FileInputStream("/home/rmamaral/eclipse-workspace/srsc-project1-final/src/main/java/fct/srsc/programs/streaming/hjUDPproxy/config.properties");
         if (inputStream == null) {
             System.err.println("Configuration file not found!");
             System.exit(1);
         }
         Properties properties = new Properties();
         properties.load(inputStream);
-        String remote = properties.getProperty("remote");
+        String remote = properties.getProperty("remoteunicast");
         String destinations = properties.getProperty("localdelivery");
 
         SocketAddress inSocketAddress = parseSocketAddress(remote);

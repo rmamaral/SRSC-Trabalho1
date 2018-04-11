@@ -11,14 +11,20 @@ import java.security.KeyStore;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
+import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Date;
 import java.util.List;
 
 import javax.crypto.Cipher;
 import javax.crypto.Mac;
 import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.PBEKeySpec;
+import javax.crypto.spec.SecretKeySpec;
 
 import fct.srsc.stgc.phase1.config.ChatRoomConfig;
 import fct.srsc.stgc.phase1.config.ReadFromConfig;
@@ -30,7 +36,6 @@ public class STGCMulticastSocket extends MulticastSocket {
 
 	private static final String VERSION = "0";
 	private static final String RELEASE = "1";
-	private static final String PAYLOAD_TYPE = "M";
 
 	private static final int HEADER_SIZE = 6;
 	private static final int MAX_SIZE = 65536;
@@ -41,33 +46,43 @@ public class STGCMulticastSocket extends MulticastSocket {
 	private Cipher c;
 	private int id = 1;
 	private List<String> nounceList;
+	
+	private String groupAddress;
+	private String username;
 
-	public STGCMulticastSocket(String groupAddress, boolean authenticationServer) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException {
+	public STGCMulticastSocket(String groupAddress, boolean authenticationServer, String username) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException, InvalidKeySpecException {
 		super();
-		init(groupAddress, authenticationServer);
+		init(groupAddress, authenticationServer,username);
 	}
 
-	public STGCMulticastSocket(String groupAddress, int port, boolean authenticationServer) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException {
+	public STGCMulticastSocket(String groupAddress, int port, boolean authenticationServer, String username) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException, InvalidKeySpecException {
 		super(port);
-		init(groupAddress, authenticationServer);
+		init(groupAddress, authenticationServer, username);
 	}
 
-	public STGCMulticastSocket(String groupAddress, SocketAddress bindAdrress, boolean authenticationServer) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException {
+	public STGCMulticastSocket(String groupAddress, SocketAddress bindAdrress, boolean authenticationServer, String username) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException, InvalidKeySpecException {
 		super(bindAdrress);
-		init(groupAddress, authenticationServer);
+		init(groupAddress, authenticationServer, username);
 	}
 
-	private void init(String groupAddress, boolean authenticationServer) throws NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException {
+	private void init(String groupAddress, boolean authenticationServer, String username) throws NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException, IOException, InvalidKeySpecException {
 		config = ReadFromConfig.readFromConfig(groupAddress);
 
-		if(authenticationServer)
+		if(authenticationServer) {
 			System.out.println("authServer: " + authenticationServer);
-
-		c = Cipher.getInstance(config.getCiphersuite(), config.getProvider());
-		nounceList = new ArrayList<String>();
+		}
+		else {
+			
+			c = Cipher.getInstance(config.getCiphersuite(), config.getProvider());
+			nounceList = new ArrayList<String>();
+			DatagramPacket p = new DatagramPacket(new byte[65536], 65536);
+			this.username = username;
+			this.groupAddress = groupAddress;
+			sendToAS(p, 'S');
+		}
 	}
 
-
+	
 	@Override
 	public void send(DatagramPacket packet) throws IOException {
 		System.out.println("Sending message through secure channel");
@@ -76,7 +91,7 @@ public class STGCMulticastSocket extends MulticastSocket {
 
 		byte[] payload = encodePayload(key64, packet);//c.doFinal(packet.getData());
 
-		byte[] header = buildHeader(payload.length);
+		byte[] header = buildHeader(payload.length, 'M');
 
 		ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
 		outputStream.write(header);
@@ -111,6 +126,28 @@ public class STGCMulticastSocket extends MulticastSocket {
 		packet.setAddress(p.getAddress());
 		packet.setPort(p.getPort());
 	}
+	
+	public void sendToAS(DatagramPacket packet, char type) throws IOException, InvalidKeySpecException, NoSuchAlgorithmException, NoSuchProviderException {
+		System.out.println("Sending message to AS");
+
+		//Key key64 = getKeyFromKeyStore("JCEKS", "mykeystore.jks", "mykey1", "password".toCharArray(), "password".toCharArray());
+		String password = "password";
+				
+		byte[] payload = encodePayloadToAS(password, packet);//c.doFinal(packet.getData());
+
+		byte[] header = buildHeader(payload.length, type);
+
+		ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+		outputStream.write(header);
+		outputStream.write(SEPARATOR);
+		outputStream.write(payload);
+
+		//Setting encrypted data and length to packet
+		packet.setData(outputStream.toByteArray());
+		packet.setLength(outputStream.size());
+
+		super.send(packet);
+	}
 
 	private Key getKeyFromKeyStore(String type, String keystore, String key, char[] keyPassword, char[] keyStorePassword) {
 
@@ -128,14 +165,14 @@ public class STGCMulticastSocket extends MulticastSocket {
 		}
 	}
 
-	private byte[] buildHeader(int payloadSize) throws IOException {
+	private byte[] buildHeader(int payloadSize, char type) throws IOException {
 		ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
 
 		outputStream.write(VERSION.getBytes());
 		outputStream.write(RELEASE.getBytes());
 
 		outputStream.write(0);
-		outputStream.write(PAYLOAD_TYPE.getBytes());
+		outputStream.write(type);
 
 		outputStream.write(0);
 
@@ -197,6 +234,76 @@ public class STGCMulticastSocket extends MulticastSocket {
 		return null;
 	}
 
+	private byte[] encodePayloadToAS(String password, DatagramPacket packet) throws IOException {
+
+		try {
+
+		    MessageDigest   hash = MessageDigest.getInstance("SHA-512", "BC");
+		        
+		    hash.update(password.getBytes());
+			
+			PBEKeySpec          pbeSpec = new PBEKeySpec(Base64.getEncoder().encodeToString(hash.digest()).toCharArray());
+	        SecretKeyFactory    keyFact = SecretKeyFactory.getInstance("PBEWithSHAAnd3KeyTripleDES", "BC");
+	        Key    				sKey = keyFact.generateSecret(pbeSpec);
+	        
+	        c.init(c.ENCRYPT_MODE, sKey);
+	    	
+			//Build nounce, ipmc, sha-512(pwd) and MACk(X)
+			ByteArrayOutputStream authC = new ByteArrayOutputStream();
+			
+			byte[] nounce = generateNounce();
+			
+			authC.write(nounce);
+			authC.write(SEPARATOR);
+			authC.write(this.groupAddress.getBytes());
+			authC.write(SEPARATOR);
+			authC.write(hash.digest());
+			authC.write(SEPARATOR);
+			
+			
+			ByteArrayOutputStream authC_NoIPMC = new ByteArrayOutputStream();
+			authC_NoIPMC.write(nounce);
+			authC_NoIPMC.write(SEPARATOR);
+			authC_NoIPMC.write(hash.digest());
+			authC_NoIPMC.write(SEPARATOR);
+			
+			//Create mac of authC
+			MessageDigest   hashMd5 = MessageDigest.getInstance("md5", "BC");
+		        
+		    hashMd5.update(authC.toByteArray());
+			Mac hMac = Mac.getInstance(config.getMacKm(), config.getProvider());
+			PBEKeySpec          pbeSpec2 = new PBEKeySpec(Base64.getEncoder().encodeToString(hashMd5.digest()).toCharArray());
+	        SecretKeyFactory    keyFact2 = SecretKeyFactory.getInstance("PBEWithSHAAnd3KeyTripleDES", "BC");
+			Key hMacKey = keyFact2.generateSecret(pbeSpec2);
+
+			hMac.init(hMacKey);
+			hMac.update(authC_NoIPMC.toByteArray());
+
+			//Add mp hash
+			authC.write(hMac.doFinal());
+
+			//Cipher mp + hash
+			c.init(Cipher.ENCRYPT_MODE, sKey);
+			byte[] ecryptedCore = c.doFinal(authC.toByteArray());
+
+			//Build Final -> clientId, NounceC, IPMC, AuthC
+			ByteArrayOutputStream full = new ByteArrayOutputStream();
+			full.write(this.username.getBytes());
+			full.write(SEPARATOR);
+			full.write(nounce);
+			full.write(SEPARATOR);
+			full.write(this.groupAddress.getBytes());
+			full.write(SEPARATOR);
+			full.write(ecryptedCore);
+			
+			return full.toByteArray();
+		} catch (Exception e) {
+			System.out.println(e);
+		}
+
+		return null;
+	}
+	
 	private byte[] decodePayload(Key key, byte[] packet) throws IOException {
 
 		try {

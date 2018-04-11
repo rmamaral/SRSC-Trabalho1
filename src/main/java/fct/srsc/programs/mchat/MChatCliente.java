@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
+import java.security.spec.InvalidKeySpecException;
 import java.util.Enumeration;
 import java.util.Iterator;
 
@@ -180,7 +181,7 @@ public class MChatCliente extends JFrame implements MulticastChatEventListener {
 
     // Configuracao do grupo multicast da sessao de chat na interface do cliente
     public void join(String username, InetAddress group, int port,
-                     int ttl) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException {
+                     int ttl) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException, InvalidKeySpecException {
         setTitle("CHAT MulticastIP " + username + "@" + group.getHostAddress()
                 + ":" + port + " [TTL=" + ttl + "]");
 

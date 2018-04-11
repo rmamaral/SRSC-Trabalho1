@@ -1,24 +1,33 @@
 package fct.srsc;
 
+import org.bouncycastle.util.encoders.Hex;
+
 import java.io.IOException;
 import java.io.InputStream;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.List;
 import java.util.Properties;
 
 public class HelloWorld {
 
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException, NoSuchProviderException, NoSuchAlgorithmException {
 
         Properties prop = new Properties();
-        InputStream input = HelloWorld.class.getClass().getResourceAsStream("/phase2/as/dacl.conf");
+        InputStream input = HelloWorld.class.getClass().getResourceAsStream("/phase2/as/users.conf");
 
         // load a properties file
         prop.load(input);
 
-        List x = Arrays.asList(prop.getProperty("239.9.9.9").split(";"));
 
-        x.stream().forEach(it -> System.out.println(it));
+        MessageDigest md = MessageDigest.getInstance("SHA-512", "BC");
+        String reis = "I<3BaNanA5!";
+
+        byte [] x = md.digest(reis.getBytes());
+        System.out.println(Hex.toHexString(x).equals(prop.getProperty("reis"))? true : false);
     }
 }

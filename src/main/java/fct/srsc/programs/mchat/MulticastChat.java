@@ -3,7 +3,8 @@ package fct.srsc.programs.mchat;
 // MulticastChat.java
 // Objecto que representa um chat Multicast
 
-import fct.srsc.stgc.phase1.STGCMulticastSocket;
+import fct.srsc.stgc.phase1.STGCMulticastSocketPhase1;
+import fct.srsc.stgc.phase2.STGCMulticastSocket;
 
 import javax.crypto.NoSuchPaddingException;
 import java.io.*;
@@ -61,7 +62,7 @@ public class MulticastChat extends Thread {
         isActive = true;
 
         // create & configure multicast socket
-        msocket = new STGCMulticastSocket("238.69.69.69", port, false, username);
+        msocket = new STGCMulticastSocketPhase1("238.69.69.69", port);
         msocket.setSoTimeout(DEFAULT_SOCKET_TIMEOUT_MILLIS);
         msocket.setTimeToLive(ttl);
         msocket.joinGroup(group);

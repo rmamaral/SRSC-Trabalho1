@@ -1,4 +1,4 @@
-package fct.srsc.stgc.phase1.utils;
+package fct.srsc.stgc.utils;
 
 import java.security.SecureRandom;
 import java.util.Random;

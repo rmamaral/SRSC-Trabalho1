@@ -1,4 +1,4 @@
-package fct.srsc.stgc.phase1;
+package fct.srsc.stgc.phase2;
 
 import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
@@ -25,15 +25,13 @@ import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.Mac;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKeyFactory;
-import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.PBEKeySpec;
-import javax.crypto.spec.SecretKeySpec;
 
 import fct.srsc.stgc.phase1.config.ChatRoomConfig;
 import fct.srsc.stgc.phase1.config.ReadFromConfig;
 import fct.srsc.stgc.phase1.exceptions.DuplicatedNonceException;
 import fct.srsc.stgc.phase1.exceptions.MessageIntegrityBrokenException;
-import fct.srsc.stgc.phase1.utils.Nonce;
+import fct.srsc.stgc.utils.Nonce;
 
 public class STGCMulticastSocket extends MulticastSocket {
 
@@ -134,7 +132,7 @@ public class STGCMulticastSocket extends MulticastSocket {
 	}
 	
 	public void receiveFromClient(DatagramPacket packet) throws IOException {
-		DatagramPacket p = new DatagramPacket(new byte[MAX_SIZE], MAX_SIZE);
+		/*DatagramPacket p = new DatagramPacket(new byte[MAX_SIZE], MAX_SIZE);
 
 		super.receive(p);
 		
@@ -143,7 +141,7 @@ public class STGCMulticastSocket extends MulticastSocket {
 		//Header size + 1 because of the delimiter between header/payload (6 bytes of header + 1 delimiter)
 		byte[] enc = Arrays.copyOfRange(p.getData(), HEADER_SIZE + 1, p.getLength());
 
-		byte[] message = decodePayloadFromClient(key64, enc);
+		byte[] message = decodePayloadFromClient(key64, enc);*/
 				
 	}
 	

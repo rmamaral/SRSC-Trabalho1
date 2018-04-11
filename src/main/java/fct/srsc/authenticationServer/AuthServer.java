@@ -1,4 +1,4 @@
-package AuthenticationServer;
+package fct.srsc.authenticationServer;
 
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -9,7 +9,7 @@ import java.security.spec.InvalidKeySpecException;
 
 import javax.crypto.NoSuchPaddingException;
 
-import fct.srsc.stgc.phase1.STGCMulticastSocket;
+import fct.srsc.stgc.phase2.STGCMulticastSocket;
 
 public class AuthServer {
 

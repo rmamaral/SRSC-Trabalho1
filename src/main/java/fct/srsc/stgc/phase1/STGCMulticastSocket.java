@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.MulticastSocket;
 import java.net.SocketAddress;
+import java.security.InvalidKeyException;
 import java.security.Key;
 import java.security.KeyStore;
 import java.security.MessageDigest;
@@ -18,7 +19,9 @@ import java.util.Base64;
 import java.util.Date;
 import java.util.List;
 
+import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.Mac;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKeyFactory;
@@ -49,6 +52,8 @@ public class STGCMulticastSocket extends MulticastSocket {
 	
 	private String groupAddress;
 	private String username;
+	
+	private boolean authenticationServer;
 
 	public STGCMulticastSocket(String groupAddress, boolean authenticationServer, String username) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException, InvalidKeySpecException {
 		super();
@@ -78,7 +83,8 @@ public class STGCMulticastSocket extends MulticastSocket {
 			DatagramPacket p = new DatagramPacket(new byte[65536], 65536);
 			this.username = username;
 			this.groupAddress = groupAddress;
-			sendToAS(p, 'S');
+			this.authenticationServer = authenticationServer;
+			sendTypeS(p, 'S');
 		}
 	}
 
@@ -127,14 +133,33 @@ public class STGCMulticastSocket extends MulticastSocket {
 		packet.setPort(p.getPort());
 	}
 	
-	public void sendToAS(DatagramPacket packet, char type) throws IOException, InvalidKeySpecException, NoSuchAlgorithmException, NoSuchProviderException {
+	public void receiveFromClient(DatagramPacket packet) throws IOException {
+		DatagramPacket p = new DatagramPacket(new byte[MAX_SIZE], MAX_SIZE);
+
+		super.receive(p);
+		
+		//Key key64 = ?????
+
+		//Header size + 1 because of the delimiter between header/payload (6 bytes of header + 1 delimiter)
+		byte[] enc = Arrays.copyOfRange(p.getData(), HEADER_SIZE + 1, p.getLength());
+
+		byte[] message = decodePayloadFromClient(key64, enc);
+				
+	}
+	
+	public void sendTypeS(DatagramPacket packet, char type) throws IOException, InvalidKeySpecException, NoSuchAlgorithmException, NoSuchProviderException {
 		System.out.println("Sending message to AS");
 
 		//Key key64 = getKeyFromKeyStore("JCEKS", "mykeystore.jks", "mykey1", "password".toCharArray(), "password".toCharArray());
 		String password = "password";
-				
-		byte[] payload = encodePayloadToAS(password, packet);//c.doFinal(packet.getData());
-
+		
+		byte[] payload;
+		if(authenticationServer){
+			payload = encodePayloadToAS(password, packet);//c.doFinal(packet.getData());
+		}
+		else{
+			payload = encodePayloadToClient(password, packet);//c.doFinal(packet.getData());
+		}
 		byte[] header = buildHeader(payload.length, type);
 
 		ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
@@ -148,7 +173,7 @@ public class STGCMulticastSocket extends MulticastSocket {
 
 		super.send(packet);
 	}
-
+	
 	private Key getKeyFromKeyStore(String type, String keystore, String key, char[] keyPassword, char[] keyStorePassword) {
 
 		try {
@@ -303,6 +328,14 @@ public class STGCMulticastSocket extends MulticastSocket {
 
 		return null;
 	}
+
+	private byte[] encodePayloadToClient(String password, DatagramPacket packet) throws IOException {
+		
+		
+		
+		return null;
+		
+	}
 	
 	private byte[] decodePayload(Key key, byte[] packet) throws IOException {
 
@@ -356,26 +389,71 @@ public class STGCMulticastSocket extends MulticastSocket {
 				if (counter == 1 && nounceIndex == -1){
 					nounceIndex = i;
 				}
-
 				if (counter == 2) {
 					nounce = new String(Arrays.copyOfRange(messageBytes, nounceIndex+1, i));
 					actualMessage = Arrays.copyOfRange(messageBytes, i + 1, messageBytes.length);
 					break;
 				}
 			}
-
 			if (!nounceList.contains(nounce))
 				nounceList.add(nounce);
 			else {
 				throw new DuplicatedNonceException();
 			}
-
 			return actualMessage;
 
 		} catch (Exception e) {
 			e.printStackTrace();
 			return null;
 		}
+	}
+	
+	private byte[] decodePayloadFromClient(Key key, byte[] packet) throws IOException, NoSuchAlgorithmException, NoSuchProviderException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
+		
+		int packetLength = packet.length;
+	
+		c.init(Cipher.DECRYPT_MODE, key);
+		
+		byte[] authenticatorC;
+		int counter = 0;
+		boolean found = false;
+		int aux = 0;
+		for(int i=0; i<packet.length; i++){
+			if(packet[i] == SEPARATOR){
+				counter++;
+				if(counter == 3){
+					aux = i+1;
+					found = true;
+				}
+			}
+		}
+		if(!found){
+			authenticatorC = null;
+		}
+		else{
+			authenticatorC = Arrays.copyOfRange(packet, aux, packet.length);
+		}
+		byte[] content = c.doFinal(packet, packet.length-authenticatorC.length, packet.length);
+		
+		
+		Mac hMac = Mac.getInstance(config.getMacKm(), config.getProvider());
+		Key hMacKey = getKeyFromKeyStore("JCEKS", "mykeystore.jks", "macOutKey", "password".toCharArray(), "password".toCharArray());
+		
+		byte[] hMacString = new byte[hMac.getMacLength()];
+		
+		System.arraycopy(packet, packetLength - hMac.getMacLength(), hMacString, 0, hMac.getMacLength());
+
+		hMac.init(hMacKey);
+		hMac.update(packet, 0, (packet.length - hMac.getMacLength()));
+
+		if (!MessageDigest.isEqual(hMac.doFinal(), hMacString))
+			throw new MessageIntegrityBrokenException();
+		
+		
+		
+		return packet;
+		
+		
 	}
 
 	private byte[] generateNounce() {

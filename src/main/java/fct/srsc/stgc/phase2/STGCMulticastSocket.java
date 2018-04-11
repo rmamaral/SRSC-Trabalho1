@@ -206,7 +206,7 @@ public class STGCMulticastSocket extends MulticastSocket {
         byte[] dataParts = Arrays.copyOfRange(packet.getData(), HEADER_SIZE + 1, packet.getLength());
         //TODO: Process Header --> Arrays.copyOf(packet.getData(), HEADER_SIZE);
 
-        return buildASRequest(dataParts, packet.getLength());
+        return buildASRequest(dataParts);
     }
 
 
@@ -488,7 +488,7 @@ public class STGCMulticastSocket extends MulticastSocket {
 
     }*/
 
-    private AuthenticationRequest buildASRequest(byte[] data, int maxLength) {
+    private AuthenticationRequest buildASRequest(byte[] data) {
         int lastIndex = 0;
         int counter = 0;
         AuthenticationRequest ar = new AuthenticationRequest();

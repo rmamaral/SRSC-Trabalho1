@@ -41,17 +41,20 @@ public class STGCMulticastSocket extends MulticastSocket {
     private static final char STGC_TLS = 'M';
     private static final char STGC_SAP = 'S';
 
+    //for accessing stgcsap.auth
     private static final String AUTH_CIPHERSUITE = "STGC-SAP";
     private static final String AUTH_PROVIDER = "PROVIDER";
+
+    //For encryption and decryption of PBE data
     private static final byte[] salt = new byte[]{0x7d, 0x60, 0x43, 0x5f, 0x02, (byte) 0xe9, (byte) 0xe0, (byte) 0xae};
     private static final int iterationCount = 2048;
+    //
 
     private static final int HEADER_SIZE = 6;
     private static final int MAX_SIZE = 65536;
 
     private static final byte SEPARATOR = 0x00;
 
-    private ChatRoomConfig config;
     private Cipher c;
     private int id = 1;
     private List<String> nounceList;
@@ -97,6 +100,8 @@ public class STGCMulticastSocket extends MulticastSocket {
         this.groupAddress = groupAddress;
 
         connectAuthenticationServer();
+
+        //TODO: wait for answer of authentication server and process that reply
     }
 
 
@@ -227,7 +232,7 @@ public class STGCMulticastSocket extends MulticastSocket {
         return outputStream.toByteArray();
     }
 
-    private byte[] encodePayload(Key key, DatagramPacket packet) throws IOException {
+    /*private byte[] encodePayload(Key key, DatagramPacket packet) throws IOException {
 
         try {
 
@@ -276,7 +281,7 @@ public class STGCMulticastSocket extends MulticastSocket {
         }
 
         return null;
-    }
+    }*/
 
     private byte[] encodePayloadToAS(byte[] hashedPassword, DatagramPacket packet) throws IOException {
 
@@ -354,7 +359,7 @@ public class STGCMulticastSocket extends MulticastSocket {
 
     }
 
-    private byte[] decodePayload(Key key, byte[] packet) throws IOException {
+    /*private byte[] decodePayload(Key key, byte[] packet) throws IOException {
 
         try {
             int packetLength = packet.length;
@@ -423,9 +428,9 @@ public class STGCMulticastSocket extends MulticastSocket {
             e.printStackTrace();
             return null;
         }
-    }
+    }*/
 
-    private byte[] decodePayloadFromClient(Key key, byte[] packet) throws IOException, NoSuchAlgorithmException, NoSuchProviderException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
+    /*private byte[] decodePayloadFromClient(Key key, byte[] packet) throws IOException, NoSuchAlgorithmException, NoSuchProviderException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
 
         int packetLength = packet.length;
 
@@ -469,7 +474,7 @@ public class STGCMulticastSocket extends MulticastSocket {
         return packet;
 
 
-    }
+    }*/
 
     private String readFromStgcSapAuth(String property) {
         try {

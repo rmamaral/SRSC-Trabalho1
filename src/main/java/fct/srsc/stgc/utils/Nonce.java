@@ -4,6 +4,8 @@ import java.security.SecureRandom;
 import java.util.Random;
 
 public class Nonce {
+    private static final char STGC_TLS = 'M';
+    private static final char STGC_SAP = 'S';
 
     private final static String STRING_NONCE = "123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-/?!_.,:;(){}[]";
     private final static String INTEGER_NONCE = "123456789";
@@ -14,10 +16,10 @@ public class Nonce {
     public static String randomNonce (char type){
         String generationType = null;
 
-        if(type=='M'){
+        if(type==STGC_TLS){
             generationType = STRING_NONCE;
         }
-        if(type=='S'){
+        if(type==STGC_SAP){
             generationType = INTEGER_NONCE;
         }
 

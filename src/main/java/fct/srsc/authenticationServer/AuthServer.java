@@ -15,7 +15,8 @@ public class AuthServer {
 
 	public static void main(String[] args) throws NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException, IOException, InvalidKeySpecException{
 
-		String impc = args[0];
+		//hardcoded for now
+		String impc = "233.33.33.33";
 		MulticastSocket socket = new STGCMulticastSocket(impc, 8989, true, "server");
 		socket.joinGroup(socket.getInetAddress());
 
@@ -24,7 +25,7 @@ public class AuthServer {
 
 		while(true){
 			p.setLength(65536); // resize with max size
-			socket.receive(p);
+			socket.receive(p); //TODO: Change to receiving as request method
 		}
 	}
 }

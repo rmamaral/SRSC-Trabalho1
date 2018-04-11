@@ -263,6 +263,6 @@ public class STGCMulticastSocketPhase1 extends MulticastSocket {
     }
 
     private byte[] generateNounce() {
-        return Nonce.randomString().getBytes();
+        return Nonce.randomNonce(PAYLOAD_TYPE.charAt(0)).getBytes();
     }
 }

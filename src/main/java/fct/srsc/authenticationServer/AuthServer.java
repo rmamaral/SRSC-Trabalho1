@@ -26,8 +26,5 @@ public class AuthServer {
 			p.setLength(65536); // resize with max size
 			socket.receive(p);
 		}
-
-
-
 	}
 }

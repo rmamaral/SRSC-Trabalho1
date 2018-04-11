@@ -22,3 +22,4 @@
 # ... etc
 
 STGC-SAP: PBEWithSHAAnd3KeyTripleDES:HMacSHA1
+PROVIDER: BC

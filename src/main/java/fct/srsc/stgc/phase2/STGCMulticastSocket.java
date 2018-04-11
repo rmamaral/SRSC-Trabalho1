@@ -4,9 +4,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.DatagramPacket;
-import java.net.MulticastSocket;
-import java.net.SocketAddress;
+import java.net.*;
 import java.security.InvalidKeyException;
 import java.security.Key;
 import java.security.KeyStore;
@@ -29,6 +27,7 @@ import fct.srsc.stgc.phase1.config.ChatRoomConfig;
 import fct.srsc.stgc.phase1.config.ReadFromConfig;
 import fct.srsc.stgc.phase1.exceptions.DuplicatedNonceException;
 import fct.srsc.stgc.phase1.exceptions.MessageIntegrityBrokenException;
+import fct.srsc.stgc.phase2.model.AuthenticationRequest;
 import fct.srsc.stgc.utils.Nonce;
 import org.bouncycastle.util.encoders.Hex;
 
@@ -44,6 +43,8 @@ public class STGCMulticastSocket extends MulticastSocket {
     //for accessing stgcsap.auth
     private static final String AUTH_CIPHERSUITE = "STGC-SAP";
     private static final String AUTH_PROVIDER = "PROVIDER";
+    private static final String AS_LOCATION = "233.33.33.33";
+    private static final int AS_LOCATION_PORT = 8989;
 
     //For encryption and decryption of PBE data
     private static final byte[] salt = new byte[]{0x7d, 0x60, 0x43, 0x5f, 0x02, (byte) 0xe9, (byte) 0xe0, (byte) 0xae};
@@ -192,9 +193,20 @@ public class STGCMulticastSocket extends MulticastSocket {
         packet.setData(outputStream.toByteArray());
         packet.setLength(outputStream.size());
 
-        //TODO: set packet destination address and port
+        packet.setAddress(InetAddress.getByName(AS_LOCATION));
+        packet.setPort(AS_LOCATION_PORT);
 
+        System.out.println(Base64.getEncoder().encodeToString(packet.getData()));
         super.send(packet);
+    }
+
+    public AuthenticationRequest receiveASRequest(DatagramPacket packet) throws IOException {
+        super.receive(packet);
+
+        byte[] dataParts = Arrays.copyOfRange(packet.getData(), HEADER_SIZE + 1, packet.getLength());
+        //TODO: Process Header --> Arrays.copyOf(packet.getData(), HEADER_SIZE);
+
+        return buildASRequest(dataParts, packet.getLength());
     }
 
 
@@ -475,6 +487,38 @@ public class STGCMulticastSocket extends MulticastSocket {
 
 
     }*/
+
+    private AuthenticationRequest buildASRequest(byte[] data, int maxLength) {
+        int lastIndex = 0;
+        int counter = 0;
+        AuthenticationRequest ar = new AuthenticationRequest();
+
+        for (int i = 0; i < data.length; i++) {
+            if (data[i] == SEPARATOR) {
+                if (counter < 3) {
+                    if (counter == 0) {
+                        ar.setUsername(new String(Arrays.copyOfRange(data, lastIndex, i)));
+                        lastIndex = i + 1;
+                        counter++;
+                    } else {
+                        if (counter == 1) {
+                            ar.setNonce(new String(Arrays.copyOfRange(data, lastIndex, i)));
+                            lastIndex = i + 1;
+                            counter++;
+                        } else {
+                            if (counter == 2) {
+                                ar.setIpmc(new String(Arrays.copyOfRange(data, lastIndex, i)));
+                                lastIndex = i + 1;
+                                ar.setAuthenticatorC(Arrays.copyOfRange(data, lastIndex, data.length));
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return ar;
+    }
 
     private String readFromStgcSapAuth(String property) {
         try {

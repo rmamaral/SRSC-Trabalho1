@@ -215,33 +215,9 @@ public class STGCMulticastSocket extends MulticastSocket {
         //TODO: Process Header --> Arrays.copyOf(packet.getData(), HEADER_SIZE);
 
         AuthenticationRequest ar = buildASRequest(dataParts);
-        verifySignature (ar);
-
 
         return ar;
     }
-
-    private void verifySignature (AuthenticationRequest ar) throws NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException, InvalidKeySpecException, InvalidKeyException, BadPaddingException, IllegalBlockSizeException {
-        String userHasahedPassword = readKeyFromConfig(ar.getUsername());
-        if(userHasahedPassword == null){
-            throw new UserNotRegisteredException();
-        }
-
-        //get ciphersuite from config file [0] -> payload ciphersuite | [1] -> hMAC ciphersuite
-        String[] ciphersuite = readFromStgcSapAuth(AUTH_CIPHERSUITE).split(":");
-        String provider = readFromStgcSapAuth(AUTH_PROVIDER);
-
-        c = Cipher.getInstance(ciphersuite[0], provider);
-        PBEKeySpec pbeSpec = new PBEKeySpec(userHasahedPassword.toCharArray(), salt, iterationCount);
-        SecretKeyFactory keyFact = SecretKeyFactory.getInstance(ciphersuite[0], provider);
-        Key sKey = keyFact.generateSecret(pbeSpec);
-
-        c.init(c.DECRYPT_MODE, sKey);
-
-        byte [] data = c.doFinal(ar.getAuthenticatorC());
-
-    }
-
 
     private Key getKeyFromKeyStore(String type, String keystore, String key, char[] keyPassword, char[] keyStorePassword) {
 

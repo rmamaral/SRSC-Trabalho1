@@ -99,13 +99,15 @@ public class STGCMulticastSocket extends MulticastSocket {
     }
 
 
-    private void establishSecureConnection(String groupAddress, String username) throws NoSuchAlgorithmException, InvalidKeySpecException, NoSuchProviderException, IOException {
+    private byte[] establishSecureConnection(String groupAddress, String username) throws NoSuchAlgorithmException, InvalidKeySpecException, NoSuchProviderException, IOException {
         this.username = username;
         this.groupAddress = groupAddress;
 
-        connectAuthenticationServer();
-
+        byte[] nounce = connectAuthenticationServer();
+        
+        
         //TODO: wait for answer of authentication server and process that reply
+        
     }
 
 
@@ -167,7 +169,7 @@ public class STGCMulticastSocket extends MulticastSocket {
 
     }
 
-    public void connectAuthenticationServer() throws IOException, InvalidKeySpecException, NoSuchAlgorithmException, NoSuchProviderException {
+    public byte[] connectAuthenticationServer() throws IOException, InvalidKeySpecException, NoSuchAlgorithmException, NoSuchProviderException {
         System.out.println("Establishing Secure Connection");
 
         //TODO: For now hardcoded -> ask professor how it is passed
@@ -179,8 +181,10 @@ public class STGCMulticastSocket extends MulticastSocket {
 
         //TODO delete this initialization
         byte[] payload = new byte[1];
+        List<byte[]> payloadWithNounce = new ArrayList<byte[]>(2);
         if (!authenticationServer) {
-            payload = encodePayloadToAS(hashedPassword, packet);//c.doFinal(packet.getData());
+            payloadWithNounce = encodePayloadToAS(hashedPassword, packet);//c.doFinal(packet.getData());
+            payload = payloadWithNounce.get(0);
         } else {
             //payload = encodePayloadToClient(hashedPassword);//c.doFinal(packet.getData());
         }
@@ -201,9 +205,10 @@ public class STGCMulticastSocket extends MulticastSocket {
 
         System.out.println(Base64.getEncoder().encodeToString(packet.getData()));
         super.send(packet);
+        return payloadWithNounce.get(1);
     }
 
-    public AuthenticationRequest receiveASRequest(DatagramPacket packet) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException, IllegalBlockSizeException, BadPaddingException, InvalidKeySpecException, InvalidKeyException {
+    public AuthenticationRequest receiveClientRequest(DatagramPacket packet) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException, IllegalBlockSizeException, BadPaddingException, InvalidKeySpecException, InvalidKeyException {
         super.receive(packet);
 
         byte[] dataParts = Arrays.copyOfRange(packet.getData(), HEADER_SIZE + 1, packet.getLength());
@@ -323,7 +328,7 @@ public class STGCMulticastSocket extends MulticastSocket {
         return null;
     }*/
 
-    private byte[] encodePayloadToAS(byte[] hashedPassword, DatagramPacket packet) throws IOException {
+    private List<byte[]> encodePayloadToAS(byte[] hashedPassword, DatagramPacket packet) throws IOException {
 
         try {
             //get ciphersuite from config file [0] -> payload ciphersuite | [1] -> hMAC ciphersuite
@@ -342,6 +347,10 @@ public class STGCMulticastSocket extends MulticastSocket {
             ByteArrayOutputStream authC = new ByteArrayOutputStream();
 
             byte[] nonce = generateNounce(STGC_SAP);
+            
+            while(nounceList.contains(nonce)) {
+            	nonce = generateNounce(STGC_SAP);
+            }
 
             authC.write(nonce);
             authC.write(SEPARATOR);
@@ -385,7 +394,11 @@ public class STGCMulticastSocket extends MulticastSocket {
             full.write(ecryptedCore);
 
             System.out.println(Base64.getEncoder().encodeToString(ecryptedCore));
-            return full.toByteArray();
+            
+            List<byte[]> response = new ArrayList<byte[]>(2);
+            response.add(full.toByteArray());
+            response.add(nonce);
+            return response;
         } catch (Exception e) {
             e.printStackTrace();
         }

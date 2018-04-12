@@ -28,6 +28,7 @@ public class MulticastSender {
         }
 
         MulticastSocket ms = new STGCMulticastSocket(args[0], false, "manel");
+        
         do {
             String msgsecret = "topcsecret message, sent on: ";
             String msgdate = new Date().toString();

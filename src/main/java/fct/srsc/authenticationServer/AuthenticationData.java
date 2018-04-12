@@ -4,7 +4,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigInteger;
-import java.net.DatagramPacket;
 import java.security.InvalidKeyException;
 import java.security.Key;
 import java.security.MessageDigest;
@@ -26,9 +25,13 @@ import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
 
+import fct.srsc.stgc.phase2.exceptions.AccessDeniedException;
+import fct.srsc.stgc.phase2.exceptions.DuplicatedNonceException;
+import fct.srsc.stgc.phase2.exceptions.MessageIntegrityBrokenException;
+import fct.srsc.stgc.phase2.model.AuthenticatorC;
+import org.bouncycastle.jcajce.provider.symmetric.ARC4;
 import org.bouncycastle.util.encoders.Hex;
 
-import fct.srsc.stgc.phase2.exceptions.UserNotRegisteredException;
 import fct.srsc.stgc.phase2.model.AuthenticationRequest;
 import fct.srsc.stgc.utils.Nonce;
 
@@ -52,17 +55,15 @@ public class AuthenticationData {
 		return nounceList;
 	}
 
-	public byte[] verifySignature (AuthenticationRequest ar) throws NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException, InvalidKeySpecException, InvalidKeyException, BadPaddingException, IllegalBlockSizeException {
+	public byte[] decryptMessage (AuthenticationRequest ar) throws NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException, InvalidKeySpecException, InvalidKeyException, BadPaddingException, IllegalBlockSizeException {
 
 		if(nounceList.contains(ar.getNonce())) {
-			System.out.println("Duplicated message");	
+			throw new DuplicatedNonceException();
 		}
 		else if(!verifyUserAuth(ar.getIpmc(),ar.getUsername())){
-			System.out.println(ar.getUsername() + ", you're not allowed in this room! -> " + ar.getIpmc());
-			return "NOTVERIFYED".getBytes();
+			throw new AccessDeniedException(String.format("%s is not allowed in the requested chat room", ar.getUsername()));
 		}
 		else {
-
 			String pwdHash = getPwdHash(ar.getUsername());
 
 			//get ciphersuite from config file [0] -> payload ciphersuite | [1] -> hMAC ciphersuite
@@ -85,45 +86,34 @@ public class AuthenticationData {
 
 			return null;
 		}
-		return null;
 	}
 
 
-	public boolean verifyMac(AuthenticationRequest ar, byte[] data) throws NoSuchAlgorithmException, NoSuchProviderException, InvalidKeyException, IOException {
-		// TODO Auto-generated method stub
+	public void verifySignature(AuthenticationRequest ar, byte[] data) throws NoSuchAlgorithmException, NoSuchProviderException, InvalidKeyException, IOException {
 
 		String[] ciphersuite = readFromStgcSapAuth(AUTH_CIPHERSUITE).split(":");
 		String provider = readFromStgcSapAuth(AUTH_PROVIDER);
-		String pwdHash = getPwdHash(ar.getUsername());
 
 		Mac hMac = Mac.getInstance(ciphersuite[1], provider);
-		byte[] hMacData = new byte[hMac.getMacLength()];
-		System.arraycopy(data, data.length - hMac.getMacLength(), hMacData, 0, hMac.getMacLength());		
 
-		byte[] core = new byte[data.length - hMac.getMacLength()];				
-		System.arraycopy(data, 0, core, 0, data.length - hMac.getMacLength());
+		AuthenticatorC authC = buildAuthC(data);
 
 		ByteArrayOutputStream authC_NoIPMC = new ByteArrayOutputStream();
-		authC_NoIPMC.write(ar.getNonce().getBytes());
+		authC_NoIPMC.write(authC.getNonce());
 		authC_NoIPMC.write(SEPARATOR);
-		authC_NoIPMC.write(pwdHash.getBytes());
+		authC_NoIPMC.write(authC.getHp());
 		authC_NoIPMC.write(SEPARATOR);
 
 		MessageDigest messageDigest = MessageDigest.getInstance("md5", "BC");
 
 		byte[] hMd5 = messageDigest.digest(authC_NoIPMC.toByteArray());
 		SecretKeySpec keySpec = new SecretKeySpec(hMd5, ciphersuite[1]);
-
 		hMac.init(keySpec);
-		hMac.update(core);
 
-		System.out.println("Mac data -> " + Base64.getEncoder().encodeToString(hMacData));
-		System.out.println("Real data -> " + Base64.getEncoder().encodeToString(hMac.doFinal()));
-		if(hMac.doFinal().equals(hMacData)) {
-			return true;
-		}
-		else {
-			return false;
+
+		if(!Base64.getEncoder().encodeToString(hMac.doFinal(authC.buildCore())).equals(Base64.getEncoder().encodeToString(authC.getMac()))
+				|| !ar.getNonce().equals(new String(authC.getNonce())) || !ar.getIpmc().equals(new String(authC.getIpmc()))) {
+			throw new MessageIntegrityBrokenException();
 		}
 	}
 
@@ -186,8 +176,6 @@ public class AuthenticationData {
 		reply.write(hMac.doFinal());
 		
 		return reply.toByteArray();
-
-
 	}
 
 	public boolean verifyUserAuth(String ipmc, String username) {
@@ -270,4 +258,35 @@ public class AuthenticationData {
 		return Nonce.randomNonce(type).getBytes();
 	}
 
+	private AuthenticatorC buildAuthC (byte[] data) {
+		int lastIndex = 0;
+		int counter = 0;
+		AuthenticatorC ar = new AuthenticatorC();
+
+		for (int i = 0; i < data.length; i++) {
+			if (data[i] == SEPARATOR) {
+				if (counter < 3) {
+					if (counter == 0) {
+						ar.setNonce(Arrays.copyOfRange(data, lastIndex, i));
+						lastIndex = i + 1;
+						counter++;
+					} else {
+						if (counter == 1) {
+							ar.setIpmc(Arrays.copyOfRange(data, lastIndex, i));
+							lastIndex = i + 1;
+							counter++;
+						} else {
+							if (counter == 2) {
+								ar.setHp(Arrays.copyOfRange(data, lastIndex, i));
+								lastIndex = i + 1;
+								ar.setMac(Arrays.copyOfRange(data, lastIndex, data.length));
+								break;
+							}
+						}
+					}
+				}
+			}
+		}
+		return ar;
+	}
 }

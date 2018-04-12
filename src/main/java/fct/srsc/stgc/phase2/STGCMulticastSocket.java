@@ -90,7 +90,7 @@ public class STGCMulticastSocket extends MulticastSocket {
         } else {
 
             byte[] nounce = establishSecureConnection(groupAddress, username);
-
+            
             //receiveReplyFromAS ();
 
             //c = Cipher.getInstance(config.getCiphersuite(), config.getProvider());
@@ -108,9 +108,10 @@ public class STGCMulticastSocket extends MulticastSocket {
         
 		DatagramPacket p = new DatagramPacket(new byte[65536], 65536);
 		p.setLength(65536);
+		System.out.println("Waiting for AS response....");
 		super.receive(p);
 		
-		System.out.println("ola");
+		System.out.println("GOT IT");
         
         return nounce;
         
@@ -210,18 +211,20 @@ public class STGCMulticastSocket extends MulticastSocket {
         packet.setAddress(InetAddress.getByName(AS_LOCATION));
         packet.setPort(AS_LOCATION_PORT);
 
-        //System.out.println(Base64.getEncoder().encodeToString(packet.getData()));
+      
         super.send(packet);
+        System.out.println("Request to AS sendend");
         return payloadWithNounce.get(1);
     }
     
-    public void sendToClient(byte[] p) {
+    public void sendToClient(byte[] p, InetAddress clientAddress) {
     	try {
     		
     		DatagramPacket packet = new DatagramPacket(new byte[65536], 65536);
+    		packet.setAddress(clientAddress);
 			packet.setLength(p.length);
     		packet.setData(p);
-    		System.out.println("sending from server to client");
+  
     		super.send(packet);
     		System.out.println("sended from server to client");
 		} catch (IOException e) {
@@ -236,7 +239,7 @@ public class STGCMulticastSocket extends MulticastSocket {
         byte[] dataParts = Arrays.copyOfRange(packet.getData(), HEADER_SIZE + 1, packet.getLength());
         //TODO: Process Header --> Arrays.copyOf(packet.getData(), HEADER_SIZE);
 
-        AuthenticationRequest ar = buildASRequest(dataParts);
+        AuthenticationRequest ar = buildASRequest(dataParts, packet.getAddress());
 
         return ar;
     }
@@ -521,11 +524,12 @@ public class STGCMulticastSocket extends MulticastSocket {
 
     }*/
 
-    private AuthenticationRequest buildASRequest(byte[] data) {
+    private AuthenticationRequest buildASRequest(byte[] data, InetAddress address) {
         int lastIndex = 0;
         int counter = 0;
         AuthenticationRequest ar = new AuthenticationRequest();
-
+        ar.setClientAddress(address);
+        
         for (int i = 0; i < data.length; i++) {
             if (data[i] == SEPARATOR) {
                 if (counter < 3) {

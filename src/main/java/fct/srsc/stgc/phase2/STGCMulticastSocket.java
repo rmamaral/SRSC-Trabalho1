@@ -27,6 +27,7 @@ import fct.srsc.stgc.phase1.config.ChatRoomConfig;
 import fct.srsc.stgc.phase1.config.ReadFromConfig;
 import fct.srsc.stgc.phase1.exceptions.DuplicatedNonceException;
 import fct.srsc.stgc.phase1.exceptions.MessageIntegrityBrokenException;
+import fct.srsc.stgc.phase2.exceptions.UserNotRegisteredException;
 import fct.srsc.stgc.phase2.model.AuthenticationRequest;
 import fct.srsc.stgc.utils.Nonce;
 import org.bouncycastle.util.encoders.Hex;
@@ -88,7 +89,9 @@ public class STGCMulticastSocket extends MulticastSocket {
             System.out.println("authServer: " + authenticationServer);
         } else {
 
-            establishSecureConnection(groupAddress, username);
+            /**String nonce =*/ establishSecureConnection(groupAddress, username);
+
+            //receiveReplyFromAS ();
 
             //c = Cipher.getInstance(config.getCiphersuite(), config.getProvider());
 
@@ -169,7 +172,7 @@ public class STGCMulticastSocket extends MulticastSocket {
 
         //TODO: For now hardcoded -> ask professor how it is passed
         MessageDigest md = MessageDigest.getInstance("SHA-512", "BC");
-        byte[] hashedPassword = md.digest("N0rmal!?PaSSw0rd".getBytes());
+        byte[] hashedPassword = Hex.decode(readKeyFromConfig(username));
 
 
         DatagramPacket packet = new DatagramPacket(new byte[MAX_SIZE], MAX_SIZE);
@@ -200,13 +203,38 @@ public class STGCMulticastSocket extends MulticastSocket {
         super.send(packet);
     }
 
-    public AuthenticationRequest receiveASRequest(DatagramPacket packet) throws IOException {
+    public AuthenticationRequest receiveASRequest(DatagramPacket packet) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException, IllegalBlockSizeException, BadPaddingException, InvalidKeySpecException, InvalidKeyException {
         super.receive(packet);
 
         byte[] dataParts = Arrays.copyOfRange(packet.getData(), HEADER_SIZE + 1, packet.getLength());
         //TODO: Process Header --> Arrays.copyOf(packet.getData(), HEADER_SIZE);
 
-        return buildASRequest(dataParts);
+        AuthenticationRequest ar = buildASRequest(dataParts);
+        verifySignature (ar);
+
+
+        return ar;
+    }
+
+    private void verifySignature (AuthenticationRequest ar) throws NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException, InvalidKeySpecException, InvalidKeyException, BadPaddingException, IllegalBlockSizeException {
+        String userHasahedPassword = readKeyFromConfig(ar.getUsername());
+        if(userHasahedPassword == null){
+            throw new UserNotRegisteredException();
+        }
+
+        //get ciphersuite from config file [0] -> payload ciphersuite | [1] -> hMAC ciphersuite
+        String[] ciphersuite = readFromStgcSapAuth(AUTH_CIPHERSUITE).split(":");
+        String provider = readFromStgcSapAuth(AUTH_PROVIDER);
+
+        c = Cipher.getInstance(ciphersuite[0], provider);
+        PBEKeySpec pbeSpec = new PBEKeySpec(userHasahedPassword.toCharArray(), salt, iterationCount);
+        SecretKeyFactory keyFact = SecretKeyFactory.getInstance(ciphersuite[0], provider);
+        Key sKey = keyFact.generateSecret(pbeSpec);
+
+        c.init(c.DECRYPT_MODE, sKey);
+
+        byte [] data = c.doFinal(ar.getAuthenticatorC());
+
     }
 
 
@@ -356,6 +384,7 @@ public class STGCMulticastSocket extends MulticastSocket {
             full.write(SEPARATOR);
             full.write(ecryptedCore);
 
+            System.out.println(Base64.getEncoder().encodeToString(ecryptedCore));
             return full.toByteArray();
         } catch (Exception e) {
             e.printStackTrace();
@@ -528,6 +557,21 @@ public class STGCMulticastSocket extends MulticastSocket {
             // load a properties file
             prop.load(input);
             return prop.getProperty(property);
+
+        } catch (IOException io) {
+            io.printStackTrace();
+            return null;
+        }
+    }
+
+    private String readKeyFromConfig (String username) {
+        try {
+            Properties prop = new Properties();
+            InputStream input = this.getClass().getResourceAsStream("/phase2/as/users.conf");
+
+            // load a properties file
+            prop.load(input);
+            return prop.getProperty(username);
 
         } catch (IOException io) {
             io.printStackTrace();

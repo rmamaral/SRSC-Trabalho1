@@ -13,6 +13,7 @@ import java.security.NoSuchProviderException;
 import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.List;
 import java.util.Properties;
 
@@ -57,7 +58,8 @@ public class AuthenticationData {
 			System.out.println("Duplicated message");	
 		}
 		else if(!verifyUserAuth(ar.getIpmc(),ar.getUsername())){
-			System.out.println(ar.getUsername() + ", you're not allowed in this room!");
+			System.out.println(ar.getUsername() + ", you're not allowed in this room! -> " + ar.getIpmc());
+			return "NOTVERIFYED".getBytes();
 		}
 		else {
 
@@ -87,11 +89,12 @@ public class AuthenticationData {
 	}
 
 
-	public boolean verifyMac(byte[] data) throws NoSuchAlgorithmException, NoSuchProviderException {
+	public boolean verifyMac(AuthenticationRequest ar, byte[] data) throws NoSuchAlgorithmException, NoSuchProviderException, InvalidKeyException, IOException {
 		// TODO Auto-generated method stub
 
 		String[] ciphersuite = readFromStgcSapAuth(AUTH_CIPHERSUITE).split(":");
 		String provider = readFromStgcSapAuth(AUTH_PROVIDER);
+		String pwdHash = getPwdHash(ar.getUsername());
 
 		Mac hMac = Mac.getInstance(ciphersuite[1], provider);
 		byte[] hMacData = new byte[hMac.getMacLength()];
@@ -100,7 +103,23 @@ public class AuthenticationData {
 		byte[] core = new byte[data.length - hMac.getMacLength()];				
 		System.arraycopy(data, 0, core, 0, data.length - hMac.getMacLength());
 
-		if(hMacData.equals(core)) {
+		ByteArrayOutputStream authC_NoIPMC = new ByteArrayOutputStream();
+		authC_NoIPMC.write(ar.getNonce().getBytes());
+		authC_NoIPMC.write(SEPARATOR);
+		authC_NoIPMC.write(pwdHash.getBytes());
+		authC_NoIPMC.write(SEPARATOR);
+
+		MessageDigest messageDigest = MessageDigest.getInstance("md5", "BC");
+
+		byte[] hMd5 = messageDigest.digest(authC_NoIPMC.toByteArray());
+		SecretKeySpec keySpec = new SecretKeySpec(hMd5, ciphersuite[1]);
+
+		hMac.init(keySpec);
+		hMac.update(core);
+
+		System.out.println("Mac data -> " + Base64.getEncoder().encodeToString(hMacData));
+		System.out.println("Real data -> " + Base64.getEncoder().encodeToString(hMac.doFinal()));
+		if(hMac.doFinal().equals(hMacData)) {
 			return true;
 		}
 		else {

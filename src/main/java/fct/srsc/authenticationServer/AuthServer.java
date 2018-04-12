@@ -39,26 +39,31 @@ public class AuthServer {
 		String msg;
 
 		while(true){
+			
 			p.setLength(65536); // resize with max size
 			AuthenticationRequest ar = socket.receiveClientRequest(p);
 			byte[] data = authData.verifySignature (ar);
-			
-			if(!authData.verifyMac(data)) {
+
+			if(data.equals("NOTVERIFYED".getBytes())) {
+				System.out.println("NAO DA!");
+			}
+			else if(!authData.verifyMac(ar,data)) {
 				System.out.println("Integrity fault!");
 			}
 			else {
 				
 				byte[] payload = authData.encrypt(ar);
-				
+				System.out.println(Base64.getEncoder().encodeToString(payload));
+				socket.sendToClient(payload);
 				// build header and send to client: Socket side?
 				
 			}
 			
 			
-			System.out.println("Username: " + ar.getUsername());
-			System.out.println("Nonce: " + ar.getNonce());
-			System.out.println("IPMC: " + ar.getIpmc());
-			System.out.println("AuthenticatorSize: " + ar.getAuthenticatorC().length);
+			//System.out.println("Username: " + ar.getUsername());
+			//System.out.println("Nonce: " + ar.getNonce());
+			//System.out.println("IPMC: " + ar.getIpmc());
+			//System.out.println("AuthenticatorSize: " + ar.getAuthenticatorC().length);
 			//processRequest(p);
 		}
 	}

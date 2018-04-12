@@ -89,7 +89,7 @@ public class STGCMulticastSocket extends MulticastSocket {
             System.out.println("authServer: " + authenticationServer);
         } else {
 
-            /**String nonce =*/ establishSecureConnection(groupAddress, username);
+            byte[] nounce = establishSecureConnection(groupAddress, username);
 
             //receiveReplyFromAS ();
 
@@ -99,14 +99,21 @@ public class STGCMulticastSocket extends MulticastSocket {
     }
 
 
-    private byte[] establishSecureConnection(String groupAddress, String username) throws NoSuchAlgorithmException, InvalidKeySpecException, NoSuchProviderException, IOException {
+    private byte[] establishSecureConnection(String groupAddress, String username) throws NoSuchAlgorithmException, InvalidKeySpecException, NoSuchProviderException, IOException, NoSuchPaddingException {
         this.username = username;
         this.groupAddress = groupAddress;
 
         byte[] nounce = connectAuthenticationServer();
-        
-        
         //TODO: wait for answer of authentication server and process that reply
+        
+		DatagramPacket p = new DatagramPacket(new byte[65536], 65536);
+		p.setLength(65536);
+		super.receive(p);
+		
+		System.out.println("ola");
+        
+        return nounce;
+        
         
     }
 
@@ -203,14 +210,29 @@ public class STGCMulticastSocket extends MulticastSocket {
         packet.setAddress(InetAddress.getByName(AS_LOCATION));
         packet.setPort(AS_LOCATION_PORT);
 
-        System.out.println(Base64.getEncoder().encodeToString(packet.getData()));
+        //System.out.println(Base64.getEncoder().encodeToString(packet.getData()));
         super.send(packet);
         return payloadWithNounce.get(1);
+    }
+    
+    public void sendToClient(byte[] p) {
+    	try {
+    		
+    		DatagramPacket packet = new DatagramPacket(new byte[65536], 65536);
+			packet.setLength(p.length);
+    		packet.setData(p);
+    		System.out.println("sending from server to client");
+    		super.send(packet);
+    		System.out.println("sended from server to client");
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
     }
 
     public AuthenticationRequest receiveClientRequest(DatagramPacket packet) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException, IllegalBlockSizeException, BadPaddingException, InvalidKeySpecException, InvalidKeyException {
         super.receive(packet);
-
+        System.out.println("Client request received");
         byte[] dataParts = Arrays.copyOfRange(packet.getData(), HEADER_SIZE + 1, packet.getLength());
         //TODO: Process Header --> Arrays.copyOf(packet.getData(), HEADER_SIZE);
 
@@ -380,13 +402,6 @@ public class STGCMulticastSocket extends MulticastSocket {
         }
 
         return null;
-    }
-
-    private byte[] encodePayloadToClient(String password, DatagramPacket packet) throws IOException {
-
-
-        return null;
-
     }
 
     /*private byte[] decodePayload(Key key, byte[] packet) throws IOException {

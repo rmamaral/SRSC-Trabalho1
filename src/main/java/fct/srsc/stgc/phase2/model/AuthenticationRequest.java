@@ -1,20 +1,32 @@
 package fct.srsc.stgc.phase2.model;
 
+import java.net.InetAddress;
+
 public class AuthenticationRequest {
 
     private String username;
     private String nonce;
     private String ipmc;
     private byte[] authenticatorC;
-
+    private InetAddress clientAddress;
+    
     public AuthenticationRequest() {
     }
 
-    public AuthenticationRequest(String username, String nonce, String ipmc, byte[] authenticatorC) {
+    public AuthenticationRequest(String username, String nonce, String ipmc, byte[] authenticatorC, InetAddress clientAddress) {
         this.username = username;
         this.nonce = nonce;
         this.ipmc = ipmc;
         this.authenticatorC = authenticatorC;
+        this.clientAddress = clientAddress;
+    }
+    
+    public void setClientAddress(InetAddress clientAddress) {
+    	this.clientAddress = clientAddress;
+    }
+    
+    public InetAddress getClientAddress() {
+    	return clientAddress;
     }
 
     public String getUsername() {

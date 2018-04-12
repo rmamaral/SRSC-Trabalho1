@@ -49,7 +49,8 @@ public class AuthServer {
 
                 byte[] payload = authData.encrypt(ar);
                 System.out.println(Base64.getEncoder().encodeToString(payload));
-                socket.sendToClient(payload);
+                
+                socket.sendToClient(payload, ar.getClientAddress());
 
 
                 // build header and send to client: Socket side?

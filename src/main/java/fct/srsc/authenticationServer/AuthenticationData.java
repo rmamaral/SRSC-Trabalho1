@@ -1,10 +1,13 @@
 package fct.srsc.authenticationServer;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.math.BigInteger;
 import java.net.DatagramPacket;
 import java.security.InvalidKeyException;
 import java.security.Key;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.spec.InvalidKeySpecException;
@@ -22,8 +25,11 @@ import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
 
+import org.bouncycastle.util.encoders.Hex;
+
 import fct.srsc.stgc.phase2.exceptions.UserNotRegisteredException;
 import fct.srsc.stgc.phase2.model.AuthenticationRequest;
+import fct.srsc.stgc.utils.Nonce;
 
 public class AuthenticationData {
 
@@ -90,16 +96,79 @@ public class AuthenticationData {
 		Mac hMac = Mac.getInstance(ciphersuite[1], provider);
 		byte[] hMacData = new byte[hMac.getMacLength()];
 		System.arraycopy(data, data.length - hMac.getMacLength(), hMacData, 0, hMac.getMacLength());		
-		
+
 		byte[] core = new byte[data.length - hMac.getMacLength()];				
 		System.arraycopy(data, 0, core, 0, data.length - hMac.getMacLength());
-		
+
 		if(hMacData.equals(core)) {
 			return true;
 		}
 		else {
 			return false;
 		}
+	}
+
+	public byte[] encrypt(AuthenticationRequest ar) throws InvalidKeyException, IOException, NoSuchAlgorithmException, NoSuchProviderException, NoSuchPaddingException, InvalidKeySpecException {
+		// TODO Auto-generated method stub
+
+		String[] ciphersuite = readFromStgcSapAuth(AUTH_CIPHERSUITE).split(":");
+		String provider = readFromStgcSapAuth(AUTH_PROVIDER);
+		String pwdHash = getPwdHash(ar.getUsername());
+
+		
+		//build core
+
+		BigInteger nounce = new BigInteger(ar.getNonce());
+		BigInteger nounceBig = nounce.add(BigInteger.ONE);
+		byte[] nounceC = nounceBig.toByteArray();
+
+		byte[] nounceS = generateNounce('S');
+		while(nounceList.contains(nounceS)) {
+			nounceS = generateNounce('S');
+		}
+		
+		//MISSING DEFINE TICKET
+		byte[] ticket = new byte[2];//TOciaesDO
+
+		ByteArrayOutputStream reply = new ByteArrayOutputStream();
+
+		reply.write(nounceC);
+		reply.write(SEPARATOR);
+		reply.write(nounceS);
+		reply.write(SEPARATOR);
+		reply.write(ticket);
+
+		//mount pbe key -> hpwd + || + nounceC+1
+		ByteArrayOutputStream pbeKey = new ByteArrayOutputStream();
+
+		pbeKey.write(pwdHash.getBytes());
+		pbeKey.write(SEPARATOR);
+		pbeKey.write(nounceC);
+	
+		c = Cipher.getInstance(ciphersuite[0], provider);
+	
+		PBEKeySpec pbeSpec = new PBEKeySpec(Hex.toHexString(pbeKey.toByteArray()).toCharArray(), salt, iterationCount);
+		SecretKeyFactory keyFact = SecretKeyFactory.getInstance(ciphersuite[0], provider);
+		Key sKey = keyFact.generateSecret(pbeSpec);
+
+		c.init(c.ENCRYPT_MODE, sKey);
+
+		//Create mac of reply
+		MessageDigest messageDigest = MessageDigest.getInstance("md5", "BC");
+
+		//MISSING MAC KEY
+		byte[] hMd5 = messageDigest.digest("password".getBytes());
+		Mac hMac = Mac.getInstance(ciphersuite[1], provider);
+		SecretKeySpec keySpec = new SecretKeySpec(hMd5, ciphersuite[1]);
+
+		hMac.init(keySpec);
+		hMac.update(reply.toByteArray());
+		
+		reply.write(hMac.doFinal());
+		
+		return reply.toByteArray();
+
+
 	}
 
 	public boolean verifyUserAuth(String ipmc, String username) {
@@ -176,6 +245,10 @@ public class AuthenticationData {
 			e.printStackTrace();
 			return "";
 		}
+	}
+
+	private byte[] generateNounce(char type) {
+		return Nonce.randomNonce(type).getBytes();
 	}
 
 }

@@ -48,6 +48,10 @@ public class AuthServer {
 			}
 			else {
 				
+				byte[] payload = authData.encrypt(ar);
+				
+				// build header and send to client: Socket side?
+				
 			}
 			
 			

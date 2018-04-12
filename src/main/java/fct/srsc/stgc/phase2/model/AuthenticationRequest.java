@@ -7,17 +7,14 @@ public class AuthenticationRequest {
     private String ipmc;
     private byte[] authenticatorC;
 
-    private boolean verified;
-
     public AuthenticationRequest() {
     }
 
-    public AuthenticationRequest(String username, String nonce, String ipmc, byte[] authenticatorC, boolean verified) {
+    public AuthenticationRequest(String username, String nonce, String ipmc, byte[] authenticatorC) {
         this.username = username;
         this.nonce = nonce;
         this.ipmc = ipmc;
         this.authenticatorC = authenticatorC;
-        this.verified = verified;
     }
 
     public String getUsername() {

@@ -2,8 +2,11 @@ package fct.srsc.stgc.phase2.model;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.Arrays;
 
 public class AuthenticatorC {
+
+    private static final byte SEPARATOR = 0x00;
 
     private byte[] nonce;
     private byte[] ipmc;
@@ -11,6 +14,10 @@ public class AuthenticatorC {
     private byte[] mac;
 
     public AuthenticatorC() {
+    }
+
+    public AuthenticatorC (byte [] rawData) {
+        buildAuthC(rawData);
     }
 
     public AuthenticatorC(byte[] nonce, byte[] ipmc, byte[] hp, byte[] mac) {
@@ -61,5 +68,35 @@ public class AuthenticatorC {
         core.write(getHp());
         core.write(0x00);
         return core.toByteArray();
+    }
+
+    private void buildAuthC(byte[] data) {
+        int lastIndex = 0;
+        int counter = 0;
+
+        for (int i = 0; i < data.length; i++) {
+            if (data[i] == SEPARATOR) {
+                if (counter < 3) {
+                    if (counter == 0) {
+                        this.setNonce(Arrays.copyOfRange(data, lastIndex, i));
+                        lastIndex = i + 1;
+                        counter++;
+                    } else {
+                        if (counter == 1) {
+                            this.setIpmc(Arrays.copyOfRange(data, lastIndex, i));
+                            lastIndex = i + 1;
+                            counter++;
+                        } else {
+                            if (counter == 2) {
+                                this.setHp(Arrays.copyOfRange(data, lastIndex, i));
+                                lastIndex = i + 1;
+                                this.setMac(Arrays.copyOfRange(data, lastIndex, data.length));
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 }

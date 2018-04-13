@@ -96,7 +96,7 @@ public class AuthenticationData {
 
         Mac hMac = Mac.getInstance(ciphersuite[1], provider);
 
-        AuthenticatorC authC = buildAuthC(data);
+        AuthenticatorC authC = new AuthenticatorC(data);
 
         ByteArrayOutputStream authC_NoIPMC = new ByteArrayOutputStream();
         authC_NoIPMC.write(authC.getNonce());
@@ -275,37 +275,5 @@ public class AuthenticationData {
 
     private byte[] generateNounce(char type) {
         return Nonce.randomNonce(type).getBytes();
-    }
-
-    private AuthenticatorC buildAuthC(byte[] data) {
-        int lastIndex = 0;
-        int counter = 0;
-        AuthenticatorC ar = new AuthenticatorC();
-
-        for (int i = 0; i < data.length; i++) {
-            if (data[i] == SEPARATOR) {
-                if (counter < 3) {
-                    if (counter == 0) {
-                        ar.setNonce(Arrays.copyOfRange(data, lastIndex, i));
-                        lastIndex = i + 1;
-                        counter++;
-                    } else {
-                        if (counter == 1) {
-                            ar.setIpmc(Arrays.copyOfRange(data, lastIndex, i));
-                            lastIndex = i + 1;
-                            counter++;
-                        } else {
-                            if (counter == 2) {
-                                ar.setHp(Arrays.copyOfRange(data, lastIndex, i));
-                                lastIndex = i + 1;
-                                ar.setMac(Arrays.copyOfRange(data, lastIndex, data.length));
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        return ar;
     }
 }

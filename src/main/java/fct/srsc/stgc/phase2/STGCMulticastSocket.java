@@ -35,10 +35,14 @@ public class STGCMulticastSocket extends MulticastSocket {
     private static final char STGC_SAP = 'S';
 
     private static final String PROVIDER_BEFORE_TICKET = "BC";
+    private static final String DEFAULT_SHA = "SHA-512";
+    private static final String DEFAULT_MD5 = "md5";
 
     //for accessing stgcsap.auth
     private static final String AUTH_CIPHERSUITE = "STGC-SAP";
     private static final String AUTH_PROVIDER = "PROVIDER";
+
+    //Authentication Server Location
     private static final String AS_LOCATION = "233.33.33.33";
     private static final int AS_LOCATION_PORT = 8989;
 
@@ -105,7 +109,7 @@ public class STGCMulticastSocket extends MulticastSocket {
         this.groupAddress = groupAddress;
 
         //TODO: For now hardcoded -> ask professor how it is passed
-        MessageDigest md = MessageDigest.getInstance("SHA-512", PROVIDER_BEFORE_TICKET);
+        MessageDigest md = MessageDigest.getInstance(DEFAULT_SHA, PROVIDER_BEFORE_TICKET);
         byte[] hashedPassword = Hex.decode(readKeyFromConfig(username));
 
         byte[] nounce = connectAuthenticationServer(hashedPassword);
@@ -209,7 +213,7 @@ public class STGCMulticastSocket extends MulticastSocket {
     public void sendToClient(byte[] p, InetAddress clientAddress, int port) {
         try {
 
-            DatagramPacket packet = new DatagramPacket(new byte[65536], 65536);
+            DatagramPacket packet = new DatagramPacket(new byte[MAX_SIZE], MAX_SIZE);
             packet.setLength(p.length);
             packet.setData(p);
 
@@ -230,7 +234,7 @@ public class STGCMulticastSocket extends MulticastSocket {
         byte[] dataParts = Arrays.copyOfRange(packet.getData(), HEADER_SIZE + 1, packet.getLength());
         //TODO: Process Header --> Arrays.copyOf(packet.getData(), HEADER_SIZE);
 
-        AuthenticationRequest ar = buildASRequest(dataParts, packet.getAddress(), packet.getPort());
+        AuthenticationRequest ar = new AuthenticationRequest(dataParts, packet.getAddress(), packet.getPort());
 
         return ar;
     }
@@ -261,7 +265,7 @@ public class STGCMulticastSocket extends MulticastSocket {
             //Build mp, id nonce and message
             ByteArrayOutputStream mp = new ByteArrayOutputStream();
 
-            byte[] nonceByte = Nonce.randomNonce('M').getBytes();
+            byte[] nonceByte = Nonce.randomNonce(STGC_TLS).getBytes();
             byte[] painText = Arrays.copyOf(packet.getData(), packet.getLength());
 
             mp.write(Integer.toString(id).getBytes());
@@ -338,7 +342,7 @@ public class STGCMulticastSocket extends MulticastSocket {
                 throw new MessageIntegrityBrokenException();
 
 
-            byte[] messageBytes = Arrays.copyOfRange(content, 0, content.length - hMacIn.getMacLength());
+            byte[] messageBytes = Arrays.copyOf(content, content.length - hMacIn.getMacLength());
 
             int nonceIndex = -1;
             String nonce = null;
@@ -413,7 +417,7 @@ public class STGCMulticastSocket extends MulticastSocket {
             authC_NoIPMC.write(SEPARATOR);
 
             //Create mac of authC
-            MessageDigest messageDigest = MessageDigest.getInstance("md5", PROVIDER_BEFORE_TICKET);
+            MessageDigest messageDigest = MessageDigest.getInstance(DEFAULT_MD5, PROVIDER_BEFORE_TICKET);
 
             byte[] hMd5 = messageDigest.digest(authC_NoIPMC.toByteArray());
             Mac hMac = Mac.getInstance(ciphersuite[1], provider);
@@ -442,6 +446,7 @@ public class STGCMulticastSocket extends MulticastSocket {
             List<byte[]> response = new ArrayList<byte[]>(2);
             response.add(full.toByteArray());
             response.add(nonce);
+
             return response;
         } catch (Exception e) {
             e.printStackTrace();
@@ -450,13 +455,13 @@ public class STGCMulticastSocket extends MulticastSocket {
         return null;
     }
 
-    private TicketAS decodePayloadFromAS(byte[] data, byte[] nounce, byte[] hashedPassword) throws InvalidKeyException, NoSuchAlgorithmException, NoSuchProviderException, NoSuchPaddingException, InvalidKeySpecException, IOException, BadPaddingException, IllegalBlockSizeException {
+    private TicketAS decodePayloadFromAS(byte[] data, byte[] nonce, byte[] hashedPassword) throws InvalidKeyException, NoSuchAlgorithmException, NoSuchProviderException, NoSuchPaddingException, InvalidKeySpecException, IOException, BadPaddingException, IllegalBlockSizeException {
         // TODO Auto-generated method stub
         String[] ciphersuite = readFromStgcSapAuth(AUTH_CIPHERSUITE).split(":");
         String provider = readFromStgcSapAuth(AUTH_PROVIDER);
 
         //Was encoded as String, so needs to be transformed to String before
-        BigInteger nouncePlus = new BigInteger(new String(nounce));
+        BigInteger nouncePlus = new BigInteger(new String(nonce));
         nouncePlus = nouncePlus.add(BigInteger.ONE);
 
         ByteArrayOutputStream pbeKey = new ByteArrayOutputStream();
@@ -474,7 +479,7 @@ public class STGCMulticastSocket extends MulticastSocket {
         c.init(c.DECRYPT_MODE, sKey);
         data = c.doFinal(data);
 
-        MessageDigest messageDigest = MessageDigest.getInstance("md5", PROVIDER_BEFORE_TICKET);
+        MessageDigest messageDigest = MessageDigest.getInstance(DEFAULT_MD5, PROVIDER_BEFORE_TICKET);
         byte[] hMd5 = messageDigest.digest("password".getBytes());
         Mac hMac = Mac.getInstance(ciphersuite[1], provider);
         SecretKeySpec keySpec = new SecretKeySpec(hMd5, ciphersuite[1]);
@@ -522,40 +527,6 @@ public class STGCMulticastSocket extends MulticastSocket {
         System.out.println("Ticket Received Successfully");
 
         return t;
-    }
-
-    private AuthenticationRequest buildASRequest(byte[] data, InetAddress address, int port) {
-        int lastIndex = 0;
-        int counter = 0;
-        AuthenticationRequest ar = new AuthenticationRequest();
-        ar.setClientAddress(address);
-        ar.setClientPort(port);
-
-        for (int i = 0; i < data.length; i++) {
-            if (data[i] == SEPARATOR) {
-                if (counter < 3) {
-                    if (counter == 0) {
-                        ar.setUsername(new String(Arrays.copyOfRange(data, lastIndex, i)));
-                        lastIndex = i + 1;
-                        counter++;
-                    } else {
-                        if (counter == 1) {
-                            ar.setNonce(new String(Arrays.copyOfRange(data, lastIndex, i)));
-                            lastIndex = i + 1;
-                            counter++;
-                        } else {
-                            if (counter == 2) {
-                                ar.setIpmc(new String(Arrays.copyOfRange(data, lastIndex, i)));
-                                lastIndex = i + 1;
-                                ar.setAuthenticatorC(Arrays.copyOfRange(data, lastIndex, data.length));
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        return ar;
     }
 
     private String readFromStgcSapAuth(String property) {

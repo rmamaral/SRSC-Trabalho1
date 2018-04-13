@@ -7,6 +7,8 @@ import java.util.Base64;
 
 public class TicketAS {
 
+    private static final byte SEPARATOR = 0x00;
+
     private byte[] ciphersuite;
     private byte[] ks;
     private byte[] kmAlgorithm;
@@ -39,19 +41,19 @@ public class TicketAS {
     public byte[] buildCore() throws IOException {
         ByteArrayOutputStream core = new ByteArrayOutputStream();
         core.write(ciphersuite);
-        core.write(0x00);
+        core.write(SEPARATOR);
         core.write(ks);
-        core.write(0x00);
+        core.write(SEPARATOR);
         core.write(kmAlgorithm);
-        core.write(0x00);
+        core.write(SEPARATOR);
         core.write(km);
-        core.write(0x00);
+        core.write(SEPARATOR);
         core.write(kaAlgorithm);
-        core.write(0x00);
+        core.write(SEPARATOR);
         core.write(ka);
-        core.write(0x00);
+        core.write(SEPARATOR);
         core.write(Long.toString(expire).getBytes());
-        core.write(0x00);
+        core.write(SEPARATOR);
         core.write(provider);
         //core.write(0x00);
         return core.toByteArray();
@@ -126,7 +128,7 @@ public class TicketAS {
         int lastIndex = 0;
 
         for (int i = 0; i < rawData.length; i++) {
-            if (rawData[i] == 0x00) {
+            if (rawData[i] == SEPARATOR) {
                 if (counter < 9) {
                     if (counter == 0) {
                         ciphersuite = Arrays.copyOfRange(rawData, lastIndex, i);

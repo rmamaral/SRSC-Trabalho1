@@ -98,6 +98,8 @@ public class STGCMulticastSocket extends MulticastSocket {
             try {
                 establishSecureConnection(groupAddress, username, Hex.toHexString(pwBytes));
                 c = Cipher.getInstance(new String(ticket.getCiphersuite()), new String(ticket.getProvider()));
+
+                //Leaving the group so the client can join again...
                 super.leaveGroup(InetAddress.getByName(groupAddress));
 
             } catch (Exception e) {

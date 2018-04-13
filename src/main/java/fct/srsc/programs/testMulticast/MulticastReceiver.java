@@ -1,9 +1,11 @@
 package fct.srsc.programs.testMulticast;
 
-import fct.srsc.stgc.phase1.STGCMulticastSocketPhase1;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
+
+import fct.srsc.stgc.phase1.STGCMulticastSocketPhase1;
+import fct.srsc.stgc.phase2.STGCMulticastSocket;
 
 public class MulticastReceiver {
 
@@ -21,7 +23,7 @@ public class MulticastReceiver {
             System.exit(0);
         }
 
-        MulticastSocket rs = new STGCMulticastSocketPhase1(args[0], port);
+        MulticastSocket rs = new STGCMulticastSocket(args[0], port, false, "miguel");
 
         rs.joinGroup(group);
 

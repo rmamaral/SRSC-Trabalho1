@@ -1,19 +1,11 @@
 package fct.srsc;
 
-import fct.srsc.stgc.utils.Nonce;
-import org.bouncycastle.util.BigIntegers;
-import org.bouncycastle.util.encoders.Hex;
-
 import java.io.IOException;
-import java.io.InputStream;
 import java.math.BigInteger;
-import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
-import java.util.Arrays;
-import java.util.Base64;
-import java.util.List;
-import java.util.Properties;
+
+import fct.srsc.stgc.utils.Nonce;
 
 public class HelloWorld {
 

@@ -114,11 +114,7 @@ public class STGCMulticastSocket extends MulticastSocket {
 		System.out.println("Waiting for AS response....");
 		super.receive(p);
 
-		System.out.println("GOT IT");
-
 		return nounce;
-
-
 	}
 
 
@@ -224,7 +220,6 @@ public class STGCMulticastSocket extends MulticastSocket {
 		try {
 
 			DatagramPacket packet = new DatagramPacket(new byte[65536], 65536);
-			System.out.println("Client Address: " + clientAddress);
 			packet.setLength(p.length);
 			packet.setData(p);
 
@@ -399,8 +394,6 @@ public class STGCMulticastSocket extends MulticastSocket {
 			full.write(this.groupAddress.getBytes());
 			full.write(SEPARATOR);
 			full.write(ecryptedCore);
-
-			System.out.println(Base64.getEncoder().encodeToString(ecryptedCore));
 
 			List<byte[]> response = new ArrayList<byte[]>(2);
 			response.add(full.toByteArray());

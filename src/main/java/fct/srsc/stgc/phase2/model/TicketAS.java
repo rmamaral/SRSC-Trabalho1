@@ -3,6 +3,7 @@ package fct.srsc.stgc.phase2.model;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Base64;
 
 public class TicketAS {
 
@@ -13,6 +14,7 @@ public class TicketAS {
     private byte[] kaAlgorithm;
     private byte[] ka;
     private long expire;
+    private byte[] provider;
 
     public TicketAS() {
 
@@ -22,7 +24,7 @@ public class TicketAS {
         buildTicket(rawData);
     }
 
-    public TicketAS(byte[] ciphersuite, byte[] ks, byte[] kmAlgorithm, byte[] km, byte[] kaAlgorithm, byte[] ka, long expire) {
+    public TicketAS(byte[] ciphersuite, byte[] ks, byte[] kmAlgorithm, byte[] km, byte[] kaAlgorithm, byte[] ka, long expire, byte[] provider) {
 
         this.ciphersuite = ciphersuite;
         this.ks = ks;
@@ -31,6 +33,7 @@ public class TicketAS {
         this.kaAlgorithm = kaAlgorithm;
         this.ka = ka;
         this.expire = expire;
+        this.provider = provider;
     }
 
     public byte[] buildCore() throws IOException {
@@ -48,6 +51,8 @@ public class TicketAS {
         core.write(ka);
         core.write(0x00);
         core.write(Long.toString(expire).getBytes());
+        core.write(0x00);
+        core.write(provider);
         //core.write(0x00);
         return core.toByteArray();
     }
@@ -108,15 +113,24 @@ public class TicketAS {
         this.expire = expire;
     }
 
+    public byte[] getProvider() {
+        return provider;
+    }
+
+    public void setProvider(byte[] provider) {
+        this.provider = provider;
+    }
+
     private void buildTicket(byte[] rawData) {
         int counter = 0;
         int lastIndex = 0;
 
         for (int i = 0; i < rawData.length; i++) {
             if (rawData[i] == 0x00) {
-                if (counter < 8) {
+                if (counter < 9) {
                     if (counter == 0) {
                         ciphersuite = Arrays.copyOfRange(rawData, lastIndex, i);
+                        System.out.println("ciphersuite: " + new String (ciphersuite));
                         lastIndex = i + 1;
                         counter++;
                     } else {
@@ -127,6 +141,7 @@ public class TicketAS {
                         } else {
                             if (counter == 2) {
                                 kmAlgorithm = Arrays.copyOfRange(rawData, lastIndex, i);
+                                System.out.println("kmAlg: " + new String (kmAlgorithm));
                                 lastIndex = i + 1;
                                 counter++;
                             } else {
@@ -146,7 +161,9 @@ public class TicketAS {
                                             counter++;
                                         } else {
                                             if (counter == 6) {
-                                                expire = Long.valueOf(new String(Arrays.copyOfRange(rawData, i + 1, rawData.length)));
+                                                expire = Long.valueOf(new String(Arrays.copyOfRange(rawData, lastIndex, i)));
+                                                lastIndex = i + 1;
+                                                provider =Arrays.copyOfRange(rawData, lastIndex, rawData.length);
                                                 break;
                                             }
                                         }

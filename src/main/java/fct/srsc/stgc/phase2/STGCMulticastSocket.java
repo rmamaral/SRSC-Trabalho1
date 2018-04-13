@@ -1,7 +1,16 @@
 package fct.srsc.stgc.phase2;
 
+import fct.srsc.stgc.phase2.exceptions.DuplicatedNonceException;
+import fct.srsc.stgc.phase2.exceptions.MessageIntegrityBrokenException;
+import fct.srsc.stgc.phase2.model.AuthenticationRequest;
+import fct.srsc.stgc.phase2.model.TicketAS;
+import fct.srsc.stgc.utils.Nonce;
+import org.bouncycastle.util.encoders.Hex;
+
+import javax.crypto.*;
+import javax.crypto.spec.PBEKeySpec;
+import javax.crypto.spec.SecretKeySpec;
 import java.io.ByteArrayOutputStream;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigInteger;
@@ -9,32 +18,12 @@ import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
 import java.net.SocketAddress;
-import java.security.InvalidKeyException;
-import java.security.Key;
-import java.security.KeyStore;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.NoSuchProviderException;
+import java.security.*;
 import java.security.spec.InvalidKeySpecException;
-import java.util.*;
-
-import javax.crypto.BadPaddingException;
-import javax.crypto.Cipher;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.Mac;
-import javax.crypto.NoSuchPaddingException;
-import javax.crypto.SecretKeyFactory;
-import javax.crypto.spec.PBEKeySpec;
-import javax.crypto.spec.SecretKeySpec;
-
-import fct.srsc.stgc.phase2.exceptions.DuplicatedNonceException;
-import fct.srsc.stgc.phase2.exceptions.MessageIntegrityBrokenException;
-import fct.srsc.stgc.phase2.model.TicketAS;
-import fct.srsc.stgc.utils.ReadFromConfigs;
-import org.bouncycastle.util.encoders.Hex;
-
-import fct.srsc.stgc.phase2.model.AuthenticationRequest;
-import fct.srsc.stgc.utils.Nonce;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Properties;
 
 @SuppressWarnings("Duplicates")
 public class STGCMulticastSocket extends MulticastSocket {
@@ -44,6 +33,8 @@ public class STGCMulticastSocket extends MulticastSocket {
 
     private static final char STGC_TLS = 'M';
     private static final char STGC_SAP = 'S';
+
+    private static final String PROVIDER_BEFORE_TICKET = "BC";
 
     //for accessing stgcsap.auth
     private static final String AUTH_CIPHERSUITE = "STGC-SAP";
@@ -95,7 +86,7 @@ public class STGCMulticastSocket extends MulticastSocket {
 
             try {
                 establishSecureConnection(groupAddress, username);
-                c = Cipher.getInstance(new String(ticket.getCiphersuite()), "BC");
+                c = Cipher.getInstance(new String(ticket.getCiphersuite()), new String(ticket.getProvider()));
 
             } catch (InvalidKeyException e) {
                 // TODO Auto-generated catch block
@@ -114,7 +105,7 @@ public class STGCMulticastSocket extends MulticastSocket {
         this.groupAddress = groupAddress;
 
         //TODO: For now hardcoded -> ask professor how it is passed
-        MessageDigest md = MessageDigest.getInstance("SHA-512", "BC");
+        MessageDigest md = MessageDigest.getInstance("SHA-512", PROVIDER_BEFORE_TICKET);
         byte[] hashedPassword = Hex.decode(readKeyFromConfig(username));
 
         byte[] nounce = connectAuthenticationServer(hashedPassword);
@@ -130,10 +121,10 @@ public class STGCMulticastSocket extends MulticastSocket {
 
 
         System.out.println("cipher: " + new String(ticket.getCiphersuite()));
-        System.out.println("kMAlg: " + new String(ticket.getKm()));
-        System.out.println("kAAlg: " + new String(ticket.getKa()));
+        System.out.println("kMAlg: " + new String(ticket.getKmAlgorithm()));
+        System.out.println("kAAlg: " + new String(ticket.getKaAlgorithm()));
         System.out.println("Exp: " + ticket.getExpire());
-        //System.out.println("Provider: " + new String(ticket.getProvider()));
+        System.out.println("Provider: " + new String(ticket.getProvider()));
     }
 
     @Override
@@ -270,7 +261,6 @@ public class STGCMulticastSocket extends MulticastSocket {
             //Build mp, id nonce and message
             ByteArrayOutputStream mp = new ByteArrayOutputStream();
 
-            String dateTimeString = Long.toString(new Date().getTime());
             byte[] nonceByte = Nonce.randomNonce('M').getBytes();
             byte[] painText = Arrays.copyOf(packet.getData(), packet.getLength());
 
@@ -281,8 +271,8 @@ public class STGCMulticastSocket extends MulticastSocket {
             mp.write(painText);
 
             //Create hash of mp
-            Mac hMac = Mac.getInstance(new String(ticket.getKm()), "BC");
-            Key hMacKey = new SecretKeySpec(ticket.getKmAlgorithm(), new String(ticket.getKm()));
+            Mac hMac = Mac.getInstance(new String(ticket.getKmAlgorithm()), new String(ticket.getProvider()));
+            Key hMacKey = new SecretKeySpec(ticket.getKm(), new String(ticket.getKmAlgorithm()));
 
             hMac.init(hMacKey);
             hMac.update(mp.toByteArray());
@@ -295,8 +285,8 @@ public class STGCMulticastSocket extends MulticastSocket {
             byte[] ecryptedCore = c.doFinal(mp.toByteArray());
 
             //Create hash for core
-            Mac hMacOut = Mac.getInstance(new String(ticket.getKa()), "BC");
-            Key hMacKeyOut = new SecretKeySpec(ticket.getKaAlgorithm(), new String(ticket.getKa()));
+            Mac hMacOut = Mac.getInstance(new String(ticket.getKaAlgorithm()), new String(ticket.getProvider()));
+            Key hMacKeyOut = new SecretKeySpec(ticket.getKa(), new String(ticket.getKaAlgorithm()));
 
             hMacOut.init(hMacKeyOut);
             hMacOut.update(ecryptedCore);
@@ -320,8 +310,8 @@ public class STGCMulticastSocket extends MulticastSocket {
             int packetLength = packet.length;
 
             //Create hash for core
-            Mac hMacOut = Mac.getInstance(new String(ticket.getKa()), "BC");
-            Key hMacKeyOut = new SecretKeySpec(ticket.getKaAlgorithm(), new String(ticket.getKa()));
+            Mac hMacOut = Mac.getInstance(new String(ticket.getKaAlgorithm()), new String(ticket.getProvider()));
+            Key hMacKeyOut = new SecretKeySpec(ticket.getKa(), new String(ticket.getKaAlgorithm()));
 
             byte[] hMacString = Arrays.copyOfRange(packet, packetLength - hMacOut.getMacLength(), packetLength);
 
@@ -336,8 +326,8 @@ public class STGCMulticastSocket extends MulticastSocket {
             byte[] content = c.doFinal(packet, 0, (packet.length - hMacOut.getMacLength()));
 
             //Create hash of mp
-            Mac hMacIn = Mac.getInstance(new String(ticket.getKm()), "BC");
-            Key hMacInKey = new SecretKeySpec(ticket.getKmAlgorithm(), new String(ticket.getKm()));
+            Mac hMacIn = Mac.getInstance(new String(ticket.getKmAlgorithm()), new String(ticket.getProvider()));
+            Key hMacInKey = new SecretKeySpec(ticket.getKm(), new String(ticket.getKmAlgorithm()));
 
             byte[] hMacInString = Arrays.copyOfRange(content, content.length - hMacIn.getMacLength(), content.length);
 
@@ -423,7 +413,7 @@ public class STGCMulticastSocket extends MulticastSocket {
             authC_NoIPMC.write(SEPARATOR);
 
             //Create mac of authC
-            MessageDigest messageDigest = MessageDigest.getInstance("md5", "BC");
+            MessageDigest messageDigest = MessageDigest.getInstance("md5", PROVIDER_BEFORE_TICKET);
 
             byte[] hMd5 = messageDigest.digest(authC_NoIPMC.toByteArray());
             Mac hMac = Mac.getInstance(ciphersuite[1], provider);
@@ -484,7 +474,7 @@ public class STGCMulticastSocket extends MulticastSocket {
         c.init(c.DECRYPT_MODE, sKey);
         data = c.doFinal(data);
 
-        MessageDigest messageDigest = MessageDigest.getInstance("md5", "BC");
+        MessageDigest messageDigest = MessageDigest.getInstance("md5", PROVIDER_BEFORE_TICKET);
         byte[] hMd5 = messageDigest.digest("password".getBytes());
         Mac hMac = Mac.getInstance(ciphersuite[1], provider);
         SecretKeySpec keySpec = new SecretKeySpec(hMd5, ciphersuite[1]);

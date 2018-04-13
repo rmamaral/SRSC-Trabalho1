@@ -116,9 +116,10 @@ public class STGCMulticastSocket extends MulticastSocket {
 
 		System.out.println("Received response from AuthServer");
 		
+		decodePayloadFromAS(p.getData(), nounce);
+		
 		return nounce;
 	}
-
 
 	@Override
 	public void send(DatagramPacket packet) throws IOException {
@@ -406,6 +407,12 @@ public class STGCMulticastSocket extends MulticastSocket {
 		}
 
 		return null;
+	}
+	
+	private void decodePayloadFromAS(byte[] data, byte[] nounce) {
+		// TODO Auto-generated method stub
+		
+		
 	}
 
 	/*private byte[] decodePayload(Key key, byte[] packet) throws IOException {

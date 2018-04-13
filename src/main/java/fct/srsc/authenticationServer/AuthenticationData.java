@@ -116,7 +116,7 @@ public class AuthenticationData {
 		}
 	}
 
-	public byte[] encrypt(AuthenticationRequest ar) throws InvalidKeyException, IOException, NoSuchAlgorithmException, NoSuchProviderException, NoSuchPaddingException, InvalidKeySpecException {
+	public byte[] encrypt(AuthenticationRequest ar) throws InvalidKeyException, IOException, NoSuchAlgorithmException, NoSuchProviderException, NoSuchPaddingException, InvalidKeySpecException, IllegalBlockSizeException, BadPaddingException {
 		// TODO Auto-generated method stub
 
 		String[] ciphersuite = readFromStgcSapAuth(AUTH_CIPHERSUITE).split(":");
@@ -160,6 +160,7 @@ public class AuthenticationData {
 		Key sKey = keyFact.generateSecret(pbeSpec);
 
 		c.init(c.ENCRYPT_MODE, sKey);
+		byte[] encCore = c.doFinal(reply.toByteArray());
 
 		//Create mac of reply
 		MessageDigest messageDigest = MessageDigest.getInstance("md5", "BC");
@@ -170,11 +171,14 @@ public class AuthenticationData {
 		SecretKeySpec keySpec = new SecretKeySpec(hMd5, ciphersuite[1]);
 
 		hMac.init(keySpec);
-		hMac.update(reply.toByteArray());
+		hMac.update(encCore);
 		
-		reply.write(hMac.doFinal());
+		ByteArrayOutputStream response = new ByteArrayOutputStream();
+		response.write(encCore);
+		response.write(SEPARATOR);
+		response.write(hMac.doFinal());
 		
-		return reply.toByteArray();
+		return response.toByteArray();
 	}
 
 	public boolean verifyUserAuth(String ipmc, String username) {

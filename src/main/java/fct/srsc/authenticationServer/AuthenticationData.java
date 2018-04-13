@@ -42,7 +42,12 @@ public class AuthenticationData {
 
     private static final byte SEPARATOR = 0x00;
     private static final String AUTH_CIPHERSUITE = "STGC-SAP";
+    private static final char STGC_SAP_TYPE = 'S';
     private static final String AUTH_PROVIDER = "PROVIDER";
+
+    private static final String DEFAULT_PROVIDER = "BC";
+    private static final String DEFAULT_SHA = "SHA-512";
+    private static final String DEFAULT_MD5 = "md5";
 
     private static final byte[] salt = new byte[]{0x7d, 0x60, 0x43, 0x5f, 0x02, (byte) 0xe9, (byte) 0xe0, (byte) 0xae};
     private static final int iterationCount = 2048;
@@ -65,11 +70,11 @@ public class AuthenticationData {
         } else if (!verifyUserAuth(ar.getIpmc(), ar.getUsername())) {
             throw new AccessDeniedException(String.format("%s is not allowed in the requested chat room", ar.getUsername()));
         } else {
-            String pwdHash = getPwdHash(ar.getUsername());
+            String pwdHash = ReadFromConfigs.readKeyFromConfig(ar.getUsername());
 
             //get ciphersuite from config file [0] -> payload ciphersuite | [1] -> hMAC ciphersuite
-            String[] ciphersuite = readFromStgcSapAuth(AUTH_CIPHERSUITE).split(":");
-            String provider = readFromStgcSapAuth(AUTH_PROVIDER);
+            String[] ciphersuite = ReadFromConfigs.readFromStgcSapAuth(AUTH_CIPHERSUITE).split(":");
+            String provider = ReadFromConfigs.readFromStgcSapAuth(AUTH_PROVIDER);
 
             c = Cipher.getInstance(ciphersuite[0], provider);
             PBEKeySpec pbeSpec = new PBEKeySpec(pwdHash.toCharArray(), salt, iterationCount);
@@ -91,8 +96,8 @@ public class AuthenticationData {
 
     public void verifySignature(AuthenticationRequest ar, byte[] data) throws NoSuchAlgorithmException, NoSuchProviderException, InvalidKeyException, IOException {
 
-        String[] ciphersuite = readFromStgcSapAuth(AUTH_CIPHERSUITE).split(":");
-        String provider = readFromStgcSapAuth(AUTH_PROVIDER);
+        String[] ciphersuite = ReadFromConfigs.readFromStgcSapAuth(AUTH_CIPHERSUITE).split(":");
+        String provider = ReadFromConfigs.readFromStgcSapAuth(AUTH_PROVIDER);
 
         Mac hMac = Mac.getInstance(ciphersuite[1], provider);
 
@@ -104,7 +109,7 @@ public class AuthenticationData {
         authC_NoIPMC.write(authC.getHp());
         authC_NoIPMC.write(SEPARATOR);
 
-        MessageDigest messageDigest = MessageDigest.getInstance("md5", "BC");
+        MessageDigest messageDigest = MessageDigest.getInstance(DEFAULT_MD5, DEFAULT_PROVIDER);
 
         byte[] hMd5 = messageDigest.digest(authC_NoIPMC.toByteArray());
         SecretKeySpec keySpec = new SecretKeySpec(hMd5, ciphersuite[1]);
@@ -120,9 +125,9 @@ public class AuthenticationData {
     public byte[] encrypt(AuthenticationRequest ar) throws InvalidKeyException, IOException, NoSuchAlgorithmException, NoSuchProviderException, NoSuchPaddingException, InvalidKeySpecException, IllegalBlockSizeException, BadPaddingException {
         // TODO Auto-generated method stub
 
-        String[] ciphersuite = readFromStgcSapAuth(AUTH_CIPHERSUITE).split(":");
-        String provider = readFromStgcSapAuth(AUTH_PROVIDER);
-        byte[] pwdHash = Hex.decode(getPwdHash(ar.getUsername()));
+        String[] ciphersuite = ReadFromConfigs.readFromStgcSapAuth(AUTH_CIPHERSUITE).split(":");
+        String provider = ReadFromConfigs.readFromStgcSapAuth(AUTH_PROVIDER);
+        byte[] pwdHash = Hex.decode(ReadFromConfigs.readKeyFromConfig(ar.getUsername()));
 
 
         //build core
@@ -131,9 +136,9 @@ public class AuthenticationData {
         BigInteger nonceBig = nonce.add(BigInteger.ONE);
         byte[] nonceC = nonceBig.toString().getBytes();
 
-        byte[] nounceS = generateNounce('S');
+        byte[] nounceS = generateNounce(STGC_SAP_TYPE);
         while (nounceList.contains(nounceS)) {
-            nounceS = generateNounce('S');
+            nounceS = generateNounce(STGC_SAP_TYPE);
         }
 
         TicketAS ticket = buildTicket(ar.getIpmc());
@@ -161,7 +166,7 @@ public class AuthenticationData {
 
 
         //Create mac of reply
-        MessageDigest messageDigest = MessageDigest.getInstance("md5", "BC");
+        MessageDigest messageDigest = MessageDigest.getInstance(DEFAULT_MD5, DEFAULT_PROVIDER);
 
         //MISSING MAC KEY
         byte[] hMd5 = messageDigest.digest("password".getBytes());
@@ -181,7 +186,7 @@ public class AuthenticationData {
 
     public boolean verifyUserAuth(String ipmc, String username) {
 
-        String[] splited = readFromDaclAuth(ipmc).split(";");
+        String[] splited = ReadFromConfigs.readFromDaclAuth(ipmc).split(";");
 
         for (int i = 0; i < splited.length; i++) {
             if (splited[i].equals(username)) {
@@ -189,68 +194,6 @@ public class AuthenticationData {
             }
         }
         return false;
-    }
-
-    public String readKeyFromConfig(String username) {
-        try {
-            Properties prop = new Properties();
-            InputStream input = this.getClass().getResourceAsStream("/phase2/as/users.conf");
-
-            // load a properties file
-            prop.load(input);
-            return prop.getProperty(username);
-
-        } catch (IOException io) {
-            io.printStackTrace();
-            return null;
-        }
-    }
-
-
-    public String readFromDaclAuth(String property) {
-        try {
-            Properties prop = new Properties();
-            InputStream input = this.getClass().getResourceAsStream("/phase2/as/dacl.conf");
-
-            prop.load(input);
-            return prop.getProperty(property);
-
-        } catch (IOException e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
-
-    private String readFromStgcSapAuth(String property) {
-        try {
-            Properties prop = new Properties();
-            InputStream input = this.getClass().getResourceAsStream("/phase2/as/stgcsap.auth");
-
-            // load a properties file
-            prop.load(input);
-            return prop.getProperty(property);
-
-        } catch (IOException io) {
-            io.printStackTrace();
-            return null;
-        }
-    }
-
-
-    public String getPwdHash(String username) {
-        // TODO Auto-generated method stub
-        try {
-            Properties prop = new Properties();
-            InputStream input = this.getClass().getResourceAsStream("/phase2/as/users.conf");
-
-            prop.load(input);
-            String hashpassword = prop.getProperty(username);
-            return hashpassword;
-
-        } catch (IOException e) {
-            e.printStackTrace();
-            return "";
-        }
     }
 
     private TicketAS buildTicket(String ipmc) {

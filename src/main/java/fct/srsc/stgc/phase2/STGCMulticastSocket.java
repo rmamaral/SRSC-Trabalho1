@@ -1,6 +1,5 @@
 package fct.srsc.stgc.phase2;
 
-import fct.srsc.stgc.phase1.config.ReadFromConfig;
 import fct.srsc.stgc.phase2.exceptions.DuplicatedNonceException;
 import fct.srsc.stgc.phase2.exceptions.MessageIntegrityBrokenException;
 import fct.srsc.stgc.phase2.model.AuthenticationRequest;
@@ -14,7 +13,6 @@ import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.math.BigInteger;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
@@ -25,7 +23,6 @@ import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Properties;
 
 @SuppressWarnings("Duplicates")
 public class STGCMulticastSocket extends MulticastSocket {
@@ -458,7 +455,6 @@ public class STGCMulticastSocket extends MulticastSocket {
     }
 
     private TicketAS decodePayloadFromAS(byte[] data, byte[] nonce, byte[] hashedPassword) throws InvalidKeyException, NoSuchAlgorithmException, NoSuchProviderException, NoSuchPaddingException, InvalidKeySpecException, IOException, BadPaddingException, IllegalBlockSizeException {
-        // TODO Auto-generated method stub
         String[] ciphersuite = ReadFromConfigs.readFromStgcSapAuth(AUTH_CIPHERSUITE).split(":");
         String provider = ReadFromConfigs.readFromStgcSapAuth(AUTH_PROVIDER);
 

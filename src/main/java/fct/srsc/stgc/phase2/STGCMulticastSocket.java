@@ -516,7 +516,7 @@ public class STGCMulticastSocket extends MulticastSocket {
                             ByteArrayOutputStream reply_NoTicket = new ByteArrayOutputStream();
                             reply_NoTicket.write(nounceTmp);
                             reply_NoTicket.write(SEPARATOR);
-                            reply_NoTicket.write(responseNounce );
+                            reply_NoTicket.write(responseNounce);
                             
                             byte[] hMd5 = messageDigest.digest(reply_NoTicket.toByteArray());
                            

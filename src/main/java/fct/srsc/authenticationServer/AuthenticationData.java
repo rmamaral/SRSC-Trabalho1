@@ -125,27 +125,25 @@ public class AuthenticationData {
 
 		String[] ciphersuite = readFromStgcSapAuth(AUTH_CIPHERSUITE).split(":");
 		String provider = readFromStgcSapAuth(AUTH_PROVIDER);
-		String pwdHash = getPwdHash(ar.getUsername());
+		byte[] pwdHash = Hex.decode(getPwdHash(ar.getUsername()));
 
 		
 		//build core
 
-		BigInteger nounce = new BigInteger(ar.getNonce());
-		BigInteger nounceBig = nounce.add(BigInteger.ONE);
-		byte[] nounceC = nounceBig.toByteArray();
+		BigInteger nonce = new BigInteger(ar.getNonce());
+		BigInteger nonceBig = nonce.add(BigInteger.ONE);
+		byte[] nonceC = nonceBig.toByteArray();
 
 		byte[] nounceS = generateNounce('S');
 		while(nounceList.contains(nounceS)) {
 			nounceS = generateNounce('S');
 		}
-		
-		//MISSING DEFINE TICKET
+
 		TicketAS ticket = buildTicket(ar.getIpmc());
-		
 
 		ByteArrayOutputStream reply = new ByteArrayOutputStream();
 
-		reply.write(nounceC);
+		reply.write(nonceC);
 		reply.write(SEPARATOR);
 		reply.write(nounceS);
 		reply.write(SEPARATOR);
@@ -154,9 +152,13 @@ public class AuthenticationData {
 		//mount pbe key -> hpwd + || + nounceC+1
 		ByteArrayOutputStream pbeKey = new ByteArrayOutputStream();
 
-		pbeKey.write(pwdHash.getBytes());
+		pbeKey.write(pwdHash);
 		pbeKey.write(SEPARATOR);
-		pbeKey.write(nounceC);
+		pbeKey.write(nonceC);
+
+		System.out.println("Pw on enconding: " + Base64.getEncoder().encodeToString(pwdHash));
+		System.out.println("Nonce on encodinf: " + Base64.getEncoder().encodeToString(nonceC));
+		System.out.println("Key on enconding: " + Base64.getEncoder().encodeToString(pbeKey.toByteArray()));
 	
 		c = Cipher.getInstance(ciphersuite[0], provider);
 	
@@ -174,10 +176,9 @@ public class AuthenticationData {
 		SecretKeySpec keySpec = new SecretKeySpec(hMd5, ciphersuite[1]);
 
 		hMac.init(keySpec);
-		hMac.update(reply.toByteArray());
 		
 		reply.write(SEPARATOR);
-		reply.write(hMac.doFinal());
+		reply.write(hMac.doFinal(reply.toByteArray()));
 		
 		c.init(c.ENCRYPT_MODE, sKey);
 		byte[] encCore = c.doFinal(reply.toByteArray());

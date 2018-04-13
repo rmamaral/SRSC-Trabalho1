@@ -17,6 +17,8 @@ import java.security.spec.InvalidKeySpecException;
 
 public class AuthServer {
 
+    private static final String ERROR = "ERROR";
+
     public static void main(String[] args) throws NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException, IOException, InvalidKeySpecException, BadPaddingException, InvalidKeyException, IllegalBlockSizeException {
 
         AuthenticationData authData = new AuthenticationData();
@@ -44,7 +46,8 @@ public class AuthServer {
                 socket.sendToClient(payload, ar.getClientAddress(), ar.getClientPort());
 
             } catch (Exception e) {
-                e.printStackTrace();
+                byte[] message = ERROR.getBytes();
+                socket.sendToClient(message, ar.getClientAddress(), ar.getClientPort());
             }
         }
     }

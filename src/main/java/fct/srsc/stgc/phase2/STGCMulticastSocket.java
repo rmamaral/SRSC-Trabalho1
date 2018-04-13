@@ -2,6 +2,7 @@ package fct.srsc.stgc.phase2;
 
 import fct.srsc.stgc.phase2.exceptions.DuplicatedNonceException;
 import fct.srsc.stgc.phase2.exceptions.MessageIntegrityBrokenException;
+import fct.srsc.stgc.phase2.exceptions.SecureConnectionFailedException;
 import fct.srsc.stgc.phase2.model.AuthenticationRequest;
 import fct.srsc.stgc.phase2.model.TicketAS;
 import fct.srsc.stgc.utils.Nonce;
@@ -45,6 +46,8 @@ public class STGCMulticastSocket extends MulticastSocket {
     private static final String AS_LOCATION = "233.33.33.33";
     private static final int AS_LOCATION_PORT = 8989;
 
+    private static final String ERROR = "ERROR";
+
     //For encryption and decryption of PBE data
     private static final byte[] salt = new byte[]{0x7d, 0x60, 0x43, 0x5f, 0x02, (byte) 0xe9, (byte) 0xe0, (byte) 0xae};
     private static final int iterationCount = 2048;
@@ -87,6 +90,7 @@ public class STGCMulticastSocket extends MulticastSocket {
             System.out.println("authServer: " + authenticationServer);
         } else {
 
+            //Encode PW given by input
             MessageDigest md = MessageDigest.getInstance(DEFAULT_SHA, PROVIDER_BEFORE_TICKET);
             byte[] pwBytes = md.digest(password.getBytes());
 
@@ -94,18 +98,14 @@ public class STGCMulticastSocket extends MulticastSocket {
                 establishSecureConnection(groupAddress, username, Hex.toHexString(pwBytes));
                 c = Cipher.getInstance(new String(ticket.getCiphersuite()), new String(ticket.getProvider()));
 
-            } catch (InvalidKeyException e) {
-                e.printStackTrace();
-            } catch (BadPaddingException e) {
-                e.printStackTrace();
-            } catch (IllegalBlockSizeException e) {
-                e.printStackTrace();
+            } catch (Exception e) {
+                throw new SecureConnectionFailedException("Could not establish a secure connection");
             }
         }
     }
 
 
-    private void establishSecureConnection(String groupAddress, String username, String passwordHex) throws NoSuchAlgorithmException, InvalidKeySpecException, NoSuchProviderException, IOException, NoSuchPaddingException, InvalidKeyException, BadPaddingException, IllegalBlockSizeException {
+    private void establishSecureConnection(String groupAddress, String username, String passwordHex) throws NoSuchProviderException, NoSuchAlgorithmException, IOException, InvalidKeySpecException, IllegalBlockSizeException, BadPaddingException, NoSuchPaddingException, InvalidKeyException {
         this.username = username;
         this.groupAddress = groupAddress;
 
@@ -118,12 +118,16 @@ public class STGCMulticastSocket extends MulticastSocket {
         DatagramPacket p = new DatagramPacket(new byte[65536], 65536);
         p.setLength(65536);
         System.out.println("Waiting for AuthServer response....");
+        super.setSoTimeout(5000);
         super.receive(p);
+
+        if (new String(Arrays.copyOf(p.getData(), p.getLength())).equals(ERROR)){
+            throw new SecureConnectionFailedException();
+        }
 
         System.out.println("Received response from AuthServer");
         ticket = decodePayloadFromAS(Arrays.copyOf(p.getData(), p.getLength()), nounce, hashedPassword);
         System.out.println("Secure Connection Established");
-
 
         System.out.println("cipher: " + new String(ticket.getCiphersuite()));
         System.out.println("kMAlg: " + new String(ticket.getKmAlgorithm()));

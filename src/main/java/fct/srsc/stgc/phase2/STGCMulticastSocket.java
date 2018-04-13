@@ -124,7 +124,6 @@ public class STGCMulticastSocket extends MulticastSocket {
         byte[] hashedPassword = Hex.decode(readKeyFromConfig(username));
 
         byte[] nounce = connectAuthenticationServer(hashedPassword);
-        //TODO: wait for answer of authentication server and process that reply
 
         DatagramPacket p = new DatagramPacket(new byte[65536], 65536);
         p.setLength(65536);
@@ -135,10 +134,10 @@ public class STGCMulticastSocket extends MulticastSocket {
         ticket = decodePayloadFromAS(Arrays.copyOf(p.getData(), p.getLength()), nounce, hashedPassword);
         System.out.println("Secure Connection Established");
 
-        System.out.println("cipher"+new String(ticket.getCiphersuite()));
-        System.out.println("kMAlg"+new String(ticket.getKm()));
-        System.out.println("kAAlg"+new String(ticket.getKa()));
-        System.out.println("Exp"+ticket.getExpire());
+        System.out.println("cipher: "+new String(ticket.getCiphersuite()));
+        System.out.println("kMAlg: "+new String(ticket.getKm()));
+        System.out.println("kAAlg: "+new String(ticket.getKa()));
+        System.out.println("Exp: "+ticket.getExpire());
     }
 
     @Override
@@ -168,7 +167,7 @@ public class STGCMulticastSocket extends MulticastSocket {
 
 		DatagramPacket p = new DatagramPacket(new byte[MAX_SIZE], MAX_SIZE);
 
-        super.receive(packet);
+        super.receive(p);
 
 		Key key64 = new SecretKeySpec(ticket.getKs(), new String(ticket.getCiphersuite()));
 
@@ -320,6 +319,8 @@ public class STGCMulticastSocket extends MulticastSocket {
 
             hMacOut.init(hMacKeyOut);
             hMacOut.update(ecryptedCore);
+
+            System.out.println(Base64.getEncoder().encodeToString(hMacOut.doFinal()));
 
             //Build final
             ByteArrayOutputStream full = new ByteArrayOutputStream();
@@ -487,15 +488,14 @@ public class STGCMulticastSocket extends MulticastSocket {
 	private byte[] decodePayload(Key key, byte[] packet) throws IOException {
 
         try {
-            int packetLength = packet.length;
-
             Mac hMacOut = Mac.getInstance(new String(ticket.getKa()), "BC");
             Key hMacKey = new SecretKeySpec(ticket.getKaAlgorithm(), new String(ticket.getKa()));
 
 
-            byte[] hMacString = Arrays.copyOfRange(packet, packetLength - hMacOut.getMacLength(), packetLength);
-            //System.arraycopy(packet, packetLength - hMacOut.getMacLength(), hMacString, 0, hMacOut.getMacLength());
+            byte[] hMacString = new byte[65000] ;/*= Arrays.copyOfRange(packet, packet.length - hMacOut.getMacLength(), packet.length);*/
+            System.arraycopy(packet, packet.length - hMacOut.getMacLength(), hMacString, 0, hMacOut.getMacLength());
 
+            System.out.println(Base64.getEncoder().encodeToString(hMacString));
             hMacOut.init(hMacKey);
             if (!MessageDigest.isEqual(hMacOut.doFinal(Arrays.copyOf(packet, hMacOut.getMacLength())), hMacString))
                 throw new MessageIntegrityBrokenException();

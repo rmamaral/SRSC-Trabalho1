@@ -1,25 +1,30 @@
 package fct.srsc.stgc.phase1;
 
-import fct.srsc.stgc.phase1.config.ChatRoomConfig;
-import fct.srsc.stgc.phase1.config.ReadFromConfig;
-import fct.srsc.stgc.phase1.exceptions.DuplicatedNonceException;
-import fct.srsc.stgc.phase1.exceptions.MessageIntegrityBrokenException;
-import fct.srsc.stgc.utils.Nonce;
-
-import javax.crypto.Cipher;
-import javax.crypto.Mac;
-import javax.crypto.NoSuchPaddingException;
 import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.MulticastSocket;
 import java.net.SocketAddress;
-import java.security.*;
+import java.security.Key;
+import java.security.KeyStore;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+
+import javax.crypto.Cipher;
+import javax.crypto.Mac;
+import javax.crypto.NoSuchPaddingException;
+
+import fct.srsc.stgc.phase1.config.ChatRoomConfig;
+import fct.srsc.stgc.phase1.config.ReadFromConfig;
+import fct.srsc.stgc.phase1.exceptions.DuplicatedNonceException;
+import fct.srsc.stgc.phase1.exceptions.MessageIntegrityBrokenException;
+import fct.srsc.stgc.utils.Nonce;
 
 @SuppressWarnings("Duplicates")
 public class STGCMulticastSocketPhase1 extends MulticastSocket {

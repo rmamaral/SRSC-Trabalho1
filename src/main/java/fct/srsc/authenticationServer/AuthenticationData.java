@@ -25,14 +25,13 @@ import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
 
+import org.bouncycastle.util.encoders.Hex;
+
 import fct.srsc.stgc.phase2.exceptions.AccessDeniedException;
 import fct.srsc.stgc.phase2.exceptions.DuplicatedNonceException;
 import fct.srsc.stgc.phase2.exceptions.MessageIntegrityBrokenException;
-import fct.srsc.stgc.phase2.model.AuthenticatorC;
-import org.bouncycastle.jcajce.provider.symmetric.ARC4;
-import org.bouncycastle.util.encoders.Hex;
-
 import fct.srsc.stgc.phase2.model.AuthenticationRequest;
+import fct.srsc.stgc.phase2.model.AuthenticatorC;
 import fct.srsc.stgc.utils.Nonce;
 
 public class AuthenticationData {

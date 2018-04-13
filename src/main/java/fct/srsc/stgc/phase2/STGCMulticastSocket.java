@@ -4,7 +4,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.*;
+import java.net.DatagramPacket;
+import java.net.InetAddress;
+import java.net.MulticastSocket;
+import java.net.SocketAddress;
 import java.security.InvalidKeyException;
 import java.security.Key;
 import java.security.KeyStore;
@@ -12,7 +15,11 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.spec.InvalidKeySpecException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Base64;
+import java.util.List;
+import java.util.Properties;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
@@ -23,14 +30,10 @@ import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
 
-import fct.srsc.stgc.phase1.config.ChatRoomConfig;
-import fct.srsc.stgc.phase1.config.ReadFromConfig;
-import fct.srsc.stgc.phase1.exceptions.DuplicatedNonceException;
-import fct.srsc.stgc.phase1.exceptions.MessageIntegrityBrokenException;
-import fct.srsc.stgc.phase2.exceptions.UserNotRegisteredException;
+import org.bouncycastle.util.encoders.Hex;
+
 import fct.srsc.stgc.phase2.model.AuthenticationRequest;
 import fct.srsc.stgc.utils.Nonce;
-import org.bouncycastle.util.encoders.Hex;
 
 @SuppressWarnings("Duplicates")
 public class STGCMulticastSocket extends MulticastSocket {

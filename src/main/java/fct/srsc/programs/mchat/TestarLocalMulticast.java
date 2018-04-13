@@ -2,8 +2,11 @@ package fct.srsc.programs.mchat;
 
 // TestarLocalMulticast.java
 // Apenas para testar
-
-import java.net.*;
+import java.net.DatagramPacket;
+import java.net.InetAddress;
+import java.net.MulticastSocket;
+import java.net.SocketException;
+import java.net.UnknownHostException;
 
 public class TestarLocalMulticast {
 

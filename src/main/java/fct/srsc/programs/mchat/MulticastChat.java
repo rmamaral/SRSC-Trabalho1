@@ -1,19 +1,24 @@
 package fct.srsc.programs.mchat;
 
-// MulticastChat.java
-// Objecto que representa um chat Multicast
-
-import fct.srsc.stgc.phase1.STGCMulticastSocketPhase1;
-import fct.srsc.stgc.phase2.STGCMulticastSocket;
-
-import javax.crypto.NoSuchPaddingException;
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.spec.InvalidKeySpecException;
+
+import javax.crypto.NoSuchPaddingException;
+
+// MulticastChat.java
+// Objecto que representa um chat Multicast
+
+import fct.srsc.stgc.phase1.STGCMulticastSocketPhase1;
 
 public class MulticastChat extends Thread {
 

@@ -1,12 +1,11 @@
 package fct.srsc.programs.testMulticast;
 
-import fct.srsc.stgc.phase1.STGCMulticastSocketPhase1;
-import fct.srsc.stgc.phase2.STGCMulticastSocket;
-
 import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
 import java.util.Date;
+
+import fct.srsc.stgc.phase2.STGCMulticastSocket;
 
 public class MulticastSender {
 

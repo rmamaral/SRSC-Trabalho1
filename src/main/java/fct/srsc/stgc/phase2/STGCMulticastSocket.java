@@ -466,7 +466,11 @@ public class STGCMulticastSocket extends MulticastSocket {
     private TicketAS decodePayloadFromAS(byte[] data, byte[] nonce, byte[] hashedPassword) throws InvalidKeyException, NoSuchAlgorithmException, NoSuchProviderException, NoSuchPaddingException, InvalidKeySpecException, IOException, BadPaddingException, IllegalBlockSizeException {
         String[] ciphersuite = ReadFromConfigs.readFromStgcSapAuth(AUTH_CIPHERSUITE).split(":");
         String provider = ReadFromConfigs.readFromStgcSapAuth(AUTH_PROVIDER);
-
+        
+        byte[] nounceTmp = new byte[20];
+        byte[] responseNounce;
+        TicketAS t = null;
+        
         //Was encoded as String, so needs to be transformed to String before
         BigInteger nouncePlus = new BigInteger(new String(nonce));
         nouncePlus = nouncePlus.add(BigInteger.ONE);
@@ -487,21 +491,7 @@ public class STGCMulticastSocket extends MulticastSocket {
         data = c.doFinal(data);
 
         MessageDigest messageDigest = MessageDigest.getInstance(DEFAULT_MD5, PROVIDER_BEFORE_TICKET);
-        byte[] hMd5 = messageDigest.digest("password".getBytes());
-        Mac hMac = Mac.getInstance(ciphersuite[1], provider);
-        SecretKeySpec keySpec = new SecretKeySpec(hMd5, ciphersuite[1]);
-
-        byte[] core = Arrays.copyOf(data, data.length - hMac.getMacLength());
-        byte[] hMacString = Arrays.copyOfRange(data, core.length, data.length);
-
-        TicketAS t = null;
-
-        hMac.init(keySpec);
-
-        if (!messageDigest.isEqual(hMac.doFinal(core), hMacString)) {
-            throw new MessageIntegrityBrokenException();
-        }
-
+ 
         int counter = 0;
         int lastIndex = 0;
 
@@ -509,7 +499,7 @@ public class STGCMulticastSocket extends MulticastSocket {
             if (data[i] == SEPARATOR) {
                 if (counter < 3) {
                     if (counter == 0) {
-                        byte[] nounceTmp = Arrays.copyOfRange(data, lastIndex, i);
+                        nounceTmp = Arrays.copyOfRange(data, lastIndex, i);
                         if (!messageDigest.isEqual(nouncePlus.toString().getBytes(), nounceTmp)) {
                             throw new MessageIntegrityBrokenException();
                         }
@@ -517,10 +507,31 @@ public class STGCMulticastSocket extends MulticastSocket {
                         counter++;
                     } else {
                         if (counter == 1) {
-                            byte[] responseNounce = Arrays.copyOfRange(data, lastIndex, i);
+                            responseNounce = Arrays.copyOfRange(data, lastIndex, i);
                             if (nounceList.contains(responseNounce)) {
                                 throw new DuplicatedNonceException();
                             }
+                            
+
+                            ByteArrayOutputStream reply_NoTicket = new ByteArrayOutputStream();
+                            reply_NoTicket.write(nounceTmp);
+                            reply_NoTicket.write(SEPARATOR);
+                            reply_NoTicket.write(responseNounce );
+                            
+                            byte[] hMd5 = messageDigest.digest(reply_NoTicket.toByteArray());
+                           
+                            Mac hMac = Mac.getInstance(ciphersuite[1], provider);
+                            SecretKeySpec keySpec = new SecretKeySpec(hMd5, ciphersuite[1]);
+
+                            byte[] core = Arrays.copyOf(data, data.length - hMac.getMacLength());
+                            byte[] hMacString = Arrays.copyOfRange(data, core.length, data.length);
+
+                            hMac.init(keySpec);
+
+                            if (!messageDigest.isEqual(hMac.doFinal(core), hMacString)) {
+                                throw new MessageIntegrityBrokenException();
+                            }
+
                             lastIndex = i + 1;
                             byte[] ticket = Arrays.copyOfRange(data, lastIndex, core.length - 1);
                             t = new TicketAS(ticket);
@@ -530,7 +541,7 @@ public class STGCMulticastSocket extends MulticastSocket {
                 }
             }
         }
-
+        
         System.out.println("Ticket Received Successfully");
 
         return t;

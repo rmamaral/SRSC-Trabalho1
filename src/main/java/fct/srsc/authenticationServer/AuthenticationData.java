@@ -151,8 +151,14 @@ public class AuthenticationData {
         //Create mac of reply
         MessageDigest messageDigest = MessageDigest.getInstance(DEFAULT_MD5, DEFAULT_PROVIDER);
 
-        //MISSING MAC KEY
-        byte[] hMd5 = messageDigest.digest("password".getBytes());
+        //MAC KEY
+        
+        ByteArrayOutputStream reply_NoTicket = new ByteArrayOutputStream();
+        reply_NoTicket.write(nonceC);
+        reply_NoTicket.write(SEPARATOR);
+        reply_NoTicket.write(nounceS);
+        
+        byte[] hMd5 = messageDigest.digest(reply_NoTicket.toByteArray());
         Mac hMac = Mac.getInstance(ciphersuite[1], provider);
         SecretKeySpec keySpec = new SecretKeySpec(hMd5, ciphersuite[1]);
 

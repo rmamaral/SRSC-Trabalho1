@@ -4,60 +4,71 @@ import java.net.InetAddress;
 
 public class AuthenticationRequest {
 
-    private String username;
-    private String nonce;
-    private String ipmc;
-    private byte[] authenticatorC;
-    private InetAddress clientAddress;
-    
-    public AuthenticationRequest() {
-    }
+	private String username;
+	private String nonce;
+	private String ipmc;
+	private byte[] authenticatorC;
 
-    public AuthenticationRequest(String username, String nonce, String ipmc, byte[] authenticatorC, InetAddress clientAddress) {
-        this.username = username;
-        this.nonce = nonce;
-        this.ipmc = ipmc;
-        this.authenticatorC = authenticatorC;
-        this.clientAddress = clientAddress;
-    }
-    
-    public void setClientAddress(InetAddress clientAddress) {
-    	this.clientAddress = clientAddress;
-    }
-    
-    public InetAddress getClientAddress() {
-    	return clientAddress;
-    }
+	private InetAddress clientAddress;
+	private int clientPort;
 
-    public String getUsername() {
-        return username;
-    }
+	public AuthenticationRequest() {
+	}
 
-    public void setUsername(String username) {
-        this.username = username;
-    }
+	public AuthenticationRequest(String username, String nonce, String ipmc, byte[] authenticatorC, InetAddress clientAddress, int clientPort) {
+		this.username = username;
+		this.nonce = nonce;
+		this.ipmc = ipmc;
+		this.authenticatorC = authenticatorC;
+		this.clientAddress = clientAddress;
+		this.clientPort = clientPort;
+	}
 
-    public String getNonce() {
-        return nonce;
-    }
+	public void setClientAddress(InetAddress clientAddress) {
+		this.clientAddress = clientAddress;
+	}
 
-    public void setNonce(String nonce) {
-        this.nonce = nonce;
-    }
+	public InetAddress getClientAddress() {
+		return clientAddress;
+	}
 
-    public String getIpmc() {
-        return ipmc;
-    }
+	public String getUsername() {
+		return username;
+	}
 
-    public void setIpmc(String ipmc) {
-        this.ipmc = ipmc;
-    }
+	public void setUsername(String username) {
+		this.username = username;
+	}
 
-    public byte[] getAuthenticatorC() {
-        return authenticatorC;
-    }
+	public String getNonce() {
+		return nonce;
+	}
 
-    public void setAuthenticatorC(byte[] authenticatorC) {
-        this.authenticatorC = authenticatorC;
-    }
+	public void setNonce(String nonce) {
+		this.nonce = nonce;
+	}
+
+	public String getIpmc() {
+		return ipmc;
+	}
+
+	public void setIpmc(String ipmc) {
+		this.ipmc = ipmc;
+	}
+
+	public byte[] getAuthenticatorC() {
+		return authenticatorC;
+	}
+
+	public void setAuthenticatorC(byte[] authenticatorC) {
+		this.authenticatorC = authenticatorC;
+	}
+
+	public int getClientPort() {
+		return clientPort;
+	}
+
+	public void setClientPort(int clientPort) {
+		this.clientPort = clientPort;
+	}
 }

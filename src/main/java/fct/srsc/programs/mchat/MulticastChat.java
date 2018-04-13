@@ -58,7 +58,7 @@ public class MulticastChat extends Thread {
 
     protected boolean isActive;
 
-    public MulticastChat(String username, InetAddress group, int port,
+    public MulticastChat(String username, String password, InetAddress group, int port,
                          int ttl,
                          MulticastChatEventListener listener) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException, InvalidKeySpecException {
 
@@ -68,7 +68,7 @@ public class MulticastChat extends Thread {
         isActive = true;
 
         // create & configure multicast socket
-        msocket = new STGCMulticastSocket("238.69.69.69", port, false, username);
+        msocket = new STGCMulticastSocket("238.69.69.69", port, false, username, password);
         msocket.setSoTimeout(DEFAULT_SOCKET_TIMEOUT_MILLIS);
         msocket.setTimeToLive(ttl);
         msocket.joinGroup(group);

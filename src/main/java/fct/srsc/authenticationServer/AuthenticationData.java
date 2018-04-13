@@ -123,8 +123,6 @@ public class AuthenticationData {
     }
 
     public byte[] encrypt(AuthenticationRequest ar) throws InvalidKeyException, IOException, NoSuchAlgorithmException, NoSuchProviderException, NoSuchPaddingException, InvalidKeySpecException, IllegalBlockSizeException, BadPaddingException {
-        // TODO Auto-generated method stub
-
         String[] ciphersuite = ReadFromConfigs.readFromStgcSapAuth(AUTH_CIPHERSUITE).split(":");
         String provider = ReadFromConfigs.readFromStgcSapAuth(AUTH_PROVIDER);
         byte[] pwdHash = Hex.decode(ReadFromConfigs.readKeyFromConfig(ar.getUsername()));
@@ -203,9 +201,11 @@ public class AuthenticationData {
         byte[] provider = crConf.getProvider().getBytes();
         byte[] ks = ReadFromConfigs.getKeyFromKeyStore("JCEKS", "mykeystore.jks", "mykey1", "password".toCharArray(), "password".toCharArray()).getEncoded();
         ks = Base64.getEncoder().encodeToString(ks).getBytes();
+
         byte[] kmAlgorithm = crConf.getMacKm().getBytes();
         byte[] km = ReadFromConfigs.getKeyFromKeyStore("JCEKS", "mykeystore.jks", "macInKey", "password".toCharArray(), "password".toCharArray()).getEncoded();
         km = Base64.getEncoder().encodeToString(km).getBytes();
+
         byte[] kaAlgorithm = crConf.getMacKa().getBytes();
         byte[] ka = ReadFromConfigs.getKeyFromKeyStore("JCEKS", "mykeystore.jks", "macOutKey", "password".toCharArray(), "password".toCharArray()).getEncoded();
         ka = Base64.getEncoder().encodeToString(ka).getBytes();

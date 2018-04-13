@@ -26,7 +26,7 @@ public class MulticastSender {
             System.exit(0);
         }
 
-        MulticastSocket ms = new STGCMulticastSocket(args[0], false, "manel");
+        MulticastSocket ms = new STGCMulticastSocket(args[0], false, "manel", "Trump1stheB3st1LoveH!m");
         
         do {
             String msgsecret = "topcsecret message, sent on: ";

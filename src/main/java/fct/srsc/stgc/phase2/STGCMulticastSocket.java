@@ -64,22 +64,22 @@ public class STGCMulticastSocket extends MulticastSocket {
     private String username;
     private boolean authenticationServer;
 
-    public STGCMulticastSocket(String groupAddress, boolean authenticationServer, String username) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException, InvalidKeySpecException {
+    public STGCMulticastSocket(String groupAddress, boolean authenticationServer, String username, String password) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException, InvalidKeySpecException {
         super();
-        init(groupAddress, authenticationServer, username);
+        init(groupAddress, authenticationServer, username, password);
     }
 
-    public STGCMulticastSocket(String groupAddress, int port, boolean authenticationServer, String username) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException, InvalidKeySpecException {
+    public STGCMulticastSocket(String groupAddress, int port, boolean authenticationServer, String username, String password) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException, InvalidKeySpecException {
         super(port);
-        init(groupAddress, authenticationServer, username);
+        init(groupAddress, authenticationServer, username, password);
     }
 
-    public STGCMulticastSocket(String groupAddress, SocketAddress bindAdrress, boolean authenticationServer, String username) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException, InvalidKeySpecException {
+    public STGCMulticastSocket(String groupAddress, SocketAddress bindAdrress, boolean authenticationServer, String username, String password) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException, InvalidKeySpecException {
         super(bindAdrress);
-        init(groupAddress, authenticationServer, username);
+        init(groupAddress, authenticationServer, username, password);
     }
 
-    private void init(String groupAddress, boolean authenticationServer, String username) throws NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException, IOException, InvalidKeySpecException {
+    private void init(String groupAddress, boolean authenticationServer, String username, String password) throws NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException, IOException, InvalidKeySpecException {
         nounceList = new ArrayList<String>();
         this.authenticationServer = authenticationServer;
 
@@ -87,12 +87,14 @@ public class STGCMulticastSocket extends MulticastSocket {
             System.out.println("authServer: " + authenticationServer);
         } else {
 
+            MessageDigest md = MessageDigest.getInstance(DEFAULT_SHA, PROVIDER_BEFORE_TICKET);
+            byte[] pwBytes = md.digest(password.getBytes());
+
             try {
-                establishSecureConnection(groupAddress, username);
+                establishSecureConnection(groupAddress, username, Hex.toHexString(pwBytes));
                 c = Cipher.getInstance(new String(ticket.getCiphersuite()), new String(ticket.getProvider()));
 
             } catch (InvalidKeyException e) {
-                // TODO Auto-generated catch block
                 e.printStackTrace();
             } catch (BadPaddingException e) {
                 e.printStackTrace();
@@ -103,13 +105,13 @@ public class STGCMulticastSocket extends MulticastSocket {
     }
 
 
-    private void establishSecureConnection(String groupAddress, String username) throws NoSuchAlgorithmException, InvalidKeySpecException, NoSuchProviderException, IOException, NoSuchPaddingException, InvalidKeyException, BadPaddingException, IllegalBlockSizeException {
+    private void establishSecureConnection(String groupAddress, String username, String passwordHex) throws NoSuchAlgorithmException, InvalidKeySpecException, NoSuchProviderException, IOException, NoSuchPaddingException, InvalidKeyException, BadPaddingException, IllegalBlockSizeException {
         this.username = username;
         this.groupAddress = groupAddress;
 
         //TODO: For now hardcoded -> ask professor how it is passed
         MessageDigest md = MessageDigest.getInstance(DEFAULT_SHA, PROVIDER_BEFORE_TICKET);
-        byte[] hashedPassword = Hex.decode(ReadFromConfigs.readKeyFromConfig(username));
+        byte[] hashedPassword = Hex.decode(passwordHex);
 
         byte[] nounce = connectAuthenticationServer(hashedPassword);
 
@@ -180,33 +182,33 @@ public class STGCMulticastSocket extends MulticastSocket {
         DatagramPacket packet = new DatagramPacket(new byte[MAX_SIZE], MAX_SIZE);
 
         //TODO delete this initialization
-        byte[] payload = new byte[1];
+        byte[] payload;
         List<byte[]> payloadWithNounce = new ArrayList<byte[]>(2);
         if (!authenticationServer) {
             payloadWithNounce = encodePayloadToAS(hashedPassword, packet);//c.doFinal(packet.getData());
             payload = payloadWithNounce.get(0);
+
+            byte[] header = buildHeader(payload.length, STGC_SAP);
+
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            outputStream.write(header);
+            outputStream.write(SEPARATOR);
+            outputStream.write(payload);
+
+            //Setting encrypted data and length to packet
+            packet.setData(outputStream.toByteArray());
+            packet.setLength(outputStream.size());
+
+            packet.setAddress(InetAddress.getByName(AS_LOCATION));
+            packet.setPort(AS_LOCATION_PORT);
+
+            super.send(packet);
+            System.out.println("Request to AuthServer sent");
+
+            return payloadWithNounce.get(1);
         } else {
-            //payload = encodePayloadToClient(hashedPassword);//c.doFinal(packet.getData());
+            return null;
         }
-
-        byte[] header = buildHeader(payload.length, STGC_SAP);
-
-        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        outputStream.write(header);
-        outputStream.write(SEPARATOR);
-        outputStream.write(payload);
-
-        //Setting encrypted data and length to packet
-        packet.setData(outputStream.toByteArray());
-        packet.setLength(outputStream.size());
-
-        packet.setAddress(InetAddress.getByName(AS_LOCATION));
-        packet.setPort(AS_LOCATION_PORT);
-
-        super.send(packet);
-        System.out.println("Request to AuthServer sent");
-
-        return payloadWithNounce.get(1);
     }
 
     public void sendToClient(byte[] p, InetAddress clientAddress, int port) {
@@ -222,7 +224,6 @@ public class STGCMulticastSocket extends MulticastSocket {
             super.send(packet);
             System.out.println("sended from server to client");
         } catch (IOException e) {
-            // TODO Auto-generated catch block
             e.printStackTrace();
         }
     }
@@ -245,10 +246,10 @@ public class STGCMulticastSocket extends MulticastSocket {
         outputStream.write(VERSION.getBytes());
         outputStream.write(RELEASE.getBytes());
 
-        outputStream.write(0);
+        outputStream.write(SEPARATOR);
         outputStream.write(type);
 
-        outputStream.write(0);
+        outputStream.write(SEPARATOR);
 
         outputStream.write((short) payloadSize);
 

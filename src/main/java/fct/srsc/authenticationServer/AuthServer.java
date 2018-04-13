@@ -23,7 +23,7 @@ public class AuthServer {
 
         //hardcoded for now
         String impc = "233.33.33.33";
-        STGCMulticastSocket socket = new STGCMulticastSocket(impc, 8989, true, "server");
+        STGCMulticastSocket socket = new STGCMulticastSocket(impc, 8989, true, "server", "server");
         System.out.println(InetAddress.getByName(impc));
         socket.joinGroup(InetAddress.getByName(impc));
 

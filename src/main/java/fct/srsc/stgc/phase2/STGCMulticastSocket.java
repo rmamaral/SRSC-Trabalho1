@@ -111,9 +111,11 @@ public class STGCMulticastSocket extends MulticastSocket {
 
 		DatagramPacket p = new DatagramPacket(new byte[65536], 65536);
 		p.setLength(65536);
-		System.out.println("Waiting for AS response....");
+		System.out.println("Waiting for AuthServer response....");
 		super.receive(p);
 
+		System.out.println("Received response from AuthServer");
+		
 		return nounce;
 	}
 
@@ -210,9 +212,9 @@ public class STGCMulticastSocket extends MulticastSocket {
 		packet.setAddress(InetAddress.getByName(AS_LOCATION));
 		packet.setPort(AS_LOCATION_PORT);
 
-
 		super.send(packet);
-		System.out.println("Request to AS sendend");
+		System.out.println("Request to AuthServer sent");
+		
 		return payloadWithNounce.get(1);
 	}
 

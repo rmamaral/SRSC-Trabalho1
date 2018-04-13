@@ -1,4 +1,13 @@
 # Secure Transport for group communication
+
+## Read.me
+
+### Known issues
+* Messages headers are not analysed or processed in any way (no time)
+* 2nd round of the phase2, there is a MD5 that has a hardcoded password (no time)
+ 
+
+
 ### Network and computer security first project
 
 ### Trabalho	Prático	nº	1 (v1.0,	22/Mar/2018)

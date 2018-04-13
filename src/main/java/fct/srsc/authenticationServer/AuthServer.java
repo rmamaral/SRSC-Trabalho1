@@ -46,24 +46,9 @@ public class AuthServer {
 
 				socket.sendToClient(payload, ar.getClientAddress(), ar.getClientPort());
 
-
-				// build header and send to client: Socket side?
-
-
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
-			//System.out.println("Username: " + ar.getUsername());
-			//System.out.println("Nonce: " + ar.getNonce());
-			//System.out.println("IPMC: " + ar.getIpmc());
-			//System.out.println("AuthenticatorSize: " + ar.getAuthenticatorC().length);
-			//processRequest(p);
 		}
 	}
-
-	private static void processRequest(DatagramPacket packet) {
-		System.out.println(Base64.getEncoder().encodeToString(Arrays.copyOf(packet.getData(), packet.getLength())));
-	}
-
-
 }

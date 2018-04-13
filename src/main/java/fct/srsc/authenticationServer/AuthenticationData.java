@@ -132,7 +132,7 @@ public class AuthenticationData {
 
 		BigInteger nonce = new BigInteger(ar.getNonce());
 		BigInteger nonceBig = nonce.add(BigInteger.ONE);
-		byte[] nonceC = nonceBig.toByteArray();
+		byte[] nonceC = nonceBig.toString().getBytes();
 
 		byte[] nounceS = generateNounce('S');
 		while(nounceList.contains(nounceS)) {
@@ -156,10 +156,6 @@ public class AuthenticationData {
 		pbeKey.write(SEPARATOR);
 		pbeKey.write(nonceC);
 
-		System.out.println("Pw on enconding: " + Base64.getEncoder().encodeToString(pwdHash));
-		System.out.println("Nonce on encodinf: " + Base64.getEncoder().encodeToString(nonceC));
-		System.out.println("Key on enconding: " + Base64.getEncoder().encodeToString(pbeKey.toByteArray()));
-	
 		c = Cipher.getInstance(ciphersuite[0], provider);
 	
 		PBEKeySpec pbeSpec = new PBEKeySpec(Hex.toHexString(pbeKey.toByteArray()).toCharArray(), salt, iterationCount);
@@ -179,7 +175,7 @@ public class AuthenticationData {
 		
 		reply.write(SEPARATOR);
 		reply.write(hMac.doFinal(reply.toByteArray()));
-		
+
 		c.init(c.ENCRYPT_MODE, sKey);
 		byte[] encCore = c.doFinal(reply.toByteArray());
 				

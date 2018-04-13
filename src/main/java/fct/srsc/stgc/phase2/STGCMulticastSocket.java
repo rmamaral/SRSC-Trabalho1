@@ -90,6 +90,7 @@ public class STGCMulticastSocket extends MulticastSocket {
             System.out.println("authServer: " + authenticationServer);
         } else {
 
+            super.joinGroup(InetAddress.getByName(groupAddress));
             //Encode PW given by input
             MessageDigest md = MessageDigest.getInstance(DEFAULT_SHA, PROVIDER_BEFORE_TICKET);
             byte[] pwBytes = md.digest(password.getBytes());
@@ -97,6 +98,7 @@ public class STGCMulticastSocket extends MulticastSocket {
             try {
                 establishSecureConnection(groupAddress, username, Hex.toHexString(pwBytes));
                 c = Cipher.getInstance(new String(ticket.getCiphersuite()), new String(ticket.getProvider()));
+                super.leaveGroup(InetAddress.getByName(groupAddress));
 
             } catch (Exception e) {
                 throw new SecureConnectionFailedException("Could not establish a secure connection");
@@ -222,8 +224,8 @@ public class STGCMulticastSocket extends MulticastSocket {
             packet.setLength(p.length);
             packet.setData(p);
 
-            packet.setAddress(clientAddress);
-            packet.setPort(port);
+            packet.setAddress(InetAddress.getByName("238.69.69.69"));
+            packet.setPort(9999);
 
             super.send(packet);
             System.out.println("sended from server to client");
@@ -234,7 +236,7 @@ public class STGCMulticastSocket extends MulticastSocket {
 
     public AuthenticationRequest receiveClientRequest(DatagramPacket packet) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException, IllegalBlockSizeException, BadPaddingException, InvalidKeySpecException, InvalidKeyException {
         super.receive(packet);
-        System.out.println("Client request received");
+        System.out.println("Client request received from: " + packet.getAddress().toString() + ":" + packet.getPort());
         byte[] dataParts = Arrays.copyOfRange(packet.getData(), HEADER_SIZE + 1, packet.getLength());
         //TODO: Process Header --> Arrays.copyOf(packet.getData(), HEADER_SIZE);
 

@@ -326,7 +326,7 @@ public class MChatCliente extends JFrame implements MulticastChatEventListener {
     public static void main(String[] args) {
         if ((args.length != 4) && (args.length != 5)) {
             System.err.println("Utilizar: MChatCliente "
-                    + "<nickusername> <grupo IPMulticast> <porto> { <ttl> }");
+                    + "<nickusername> <grupo IPMulticast> <porto> <password> { <ttl> }");
             System.err.println("       - TTL default = 1");
             System.exit(1);
         }

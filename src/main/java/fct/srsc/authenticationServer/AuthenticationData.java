@@ -164,9 +164,7 @@ public class AuthenticationData {
 		SecretKeyFactory keyFact = SecretKeyFactory.getInstance(ciphersuite[0], provider);
 		Key sKey = keyFact.generateSecret(pbeSpec);
 
-		c.init(c.ENCRYPT_MODE, sKey);
-		byte[] encCore = c.doFinal(reply.toByteArray());
-
+		
 		//Create mac of reply
 		MessageDigest messageDigest = MessageDigest.getInstance("md5", "BC");
 
@@ -176,14 +174,15 @@ public class AuthenticationData {
 		SecretKeySpec keySpec = new SecretKeySpec(hMd5, ciphersuite[1]);
 
 		hMac.init(keySpec);
-		hMac.update(encCore);
+		hMac.update(reply.toByteArray());
 		
-		ByteArrayOutputStream response = new ByteArrayOutputStream();
-		response.write(encCore);
-		response.write(SEPARATOR);
-		response.write(hMac.doFinal());
+		reply.write(SEPARATOR);
+		reply.write(hMac.doFinal());
 		
-		return response.toByteArray();
+		c.init(c.ENCRYPT_MODE, sKey);
+		byte[] encCore = c.doFinal(reply.toByteArray());
+				
+		return encCore;
 	}
 
 	public boolean verifyUserAuth(String ipmc, String username) {

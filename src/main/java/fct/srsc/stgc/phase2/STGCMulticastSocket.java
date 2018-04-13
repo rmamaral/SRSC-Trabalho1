@@ -4,6 +4,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.math.BigInteger;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
@@ -111,7 +112,11 @@ public class STGCMulticastSocket extends MulticastSocket {
 		this.username = username;
 		this.groupAddress = groupAddress;
 
-		byte[] nounce = connectAuthenticationServer();
+		//TODO: For now hardcoded -> ask professor how it is passed
+		MessageDigest md = MessageDigest.getInstance("SHA-512", "BC");
+		byte[] hashedPassword = Hex.decode(readKeyFromConfig(username));
+		
+		byte[] nounce = connectAuthenticationServer(hashedPassword);
 		//TODO: wait for answer of authentication server and process that reply
 
 		DatagramPacket p = new DatagramPacket(new byte[65536], 65536);
@@ -122,7 +127,7 @@ public class STGCMulticastSocket extends MulticastSocket {
 		System.out.println("Received response from AuthServer");
 		byte [] data = new byte[p.getLength()];
 		System.arraycopy(p.getData(), 0, data, 0, p.getLength());
-		decodePayloadFromAS(data, nounce);
+		decodePayloadFromAS(data, nounce, hashedPassword);
 	}
 
 	@Override
@@ -183,13 +188,8 @@ public class STGCMulticastSocket extends MulticastSocket {
 
 	}
 
-	public byte[] connectAuthenticationServer() throws IOException, InvalidKeySpecException, NoSuchAlgorithmException, NoSuchProviderException {
+	public byte[] connectAuthenticationServer(byte[] hashedPassword) throws IOException, InvalidKeySpecException, NoSuchAlgorithmException, NoSuchProviderException {
 		System.out.println("Establishing Secure Connection");
-
-		//TODO: For now hardcoded -> ask professor how it is passed
-		MessageDigest md = MessageDigest.getInstance("SHA-512", "BC");
-		byte[] hashedPassword = Hex.decode(readKeyFromConfig(username));
-
 
 		DatagramPacket packet = new DatagramPacket(new byte[MAX_SIZE], MAX_SIZE);
 
@@ -399,10 +399,38 @@ public class STGCMulticastSocket extends MulticastSocket {
 		return null;
 	}
 
-	private void decodePayloadFromAS(byte[] data, byte[] nounce) throws InvalidKeyException, NoSuchAlgorithmException, NoSuchProviderException {
+	private void decodePayloadFromAS(byte[] data, byte[] nounce, byte[] hashedPassword) throws InvalidKeyException, NoSuchAlgorithmException, NoSuchProviderException, NoSuchPaddingException, InvalidKeySpecException, IOException {
 		// TODO Auto-generated method stub
 		String[] ciphersuite = readFromStgcSapAuth(AUTH_CIPHERSUITE).split(":");
 		String provider = readFromStgcSapAuth(AUTH_PROVIDER);
+		BigInteger nouncePlus = new BigInteger(nounce);
+		nouncePlus = nouncePlus.add(BigInteger.ONE);
+		
+		ByteArrayOutputStream pbeKey = new ByteArrayOutputStream();
+
+		pbeKey.write(hashedPassword);
+		pbeKey.write(SEPARATOR);
+		pbeKey.write(nouncePlus.toByteArray());
+	
+		c = Cipher.getInstance(ciphersuite[0], provider);
+		PBEKeySpec pbeSpec = new PBEKeySpec(Hex.toHexString(pbeKey.toByteArray()).toCharArray(), salt, iterationCount);
+		SecretKeyFactory keyFact = SecretKeyFactory.getInstance(ciphersuite[0], provider);
+		Key sKey = keyFact.generateSecret(pbeSpec);
+
+		try {
+			c.init(c.DECRYPT_MODE, sKey);
+			data = c.doFinal(data);
+		}
+		catch(InvalidKeyException invKey) {
+			System.out.println("Invalid Key!");
+		} catch (IllegalBlockSizeException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (BadPaddingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
 
 		MessageDigest messageDigest = MessageDigest.getInstance("md5", "BC");
 		byte[] hMd5 = messageDigest.digest("password".getBytes());
@@ -414,10 +442,10 @@ public class STGCMulticastSocket extends MulticastSocket {
 
 		core = Arrays.copyOfRange(data, 0, data.length - hMac.getMacLength());
 		hMacString = Arrays.copyOfRange(data, data.length - hMac.getMacLength(), data.length);
-		
+
 		hMac.init(keySpec);
 		hMac.update(core);
-		
+
 		System.out.println("ALL -> " + Base64.getEncoder().encodeToString(data));
 		System.out.println("HMAC -> " + Base64.getEncoder().encodeToString(hMacString));
 		System.out.println("CORE -> " + Base64.getEncoder().encodeToString(hMac.doFinal()));
@@ -429,13 +457,13 @@ public class STGCMulticastSocket extends MulticastSocket {
 
 			int counter = 0;
 			int lastIndex = 0;
-			
+
 			for (int i = 0; i < data.length; i++) {
 				if (data[i] == SEPARATOR) {
 					if (counter < 3) {
 						if (counter == 0) {
-							byte[] nouncePlus = Arrays.copyOfRange(data, lastIndex, i);
-							if(!messageDigest.isEqual(nouncePlus, nounce)) {
+							byte[] nounceTmp = Arrays.copyOfRange(data, lastIndex, i);
+							if(!messageDigest.isEqual(nouncePlus.toByteArray(), nounceTmp)) {
 								System.out.println("Message Corrupted2");
 								break;
 							}
@@ -461,18 +489,18 @@ public class STGCMulticastSocket extends MulticastSocket {
 					}
 				}	
 			}
-			
+
 			//take care of ticket
-			
-			
-		}
-			
-			
 
 
 		}
 
-		/*private byte[] decodePayload(Key key, byte[] packet) throws IOException {
+
+
+
+	}
+
+	/*private byte[] decodePayload(Key key, byte[] packet) throws IOException {
 
         try {
             int packetLength = packet.length;
@@ -543,7 +571,7 @@ public class STGCMulticastSocket extends MulticastSocket {
         }
     }*/
 
-		/*private byte[] decodePayloadFromClient(Key key, byte[] packet) throws IOException, NoSuchAlgorithmException, NoSuchProviderException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
+	/*private byte[] decodePayloadFromClient(Key key, byte[] packet) throws IOException, NoSuchAlgorithmException, NoSuchProviderException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
 
         int packetLength = packet.length;
 
@@ -589,71 +617,71 @@ public class STGCMulticastSocket extends MulticastSocket {
 
     }*/
 
-		private AuthenticationRequest buildASRequest(byte[] data, InetAddress address, int port) {
-			int lastIndex = 0;
-			int counter = 0;
-			AuthenticationRequest ar = new AuthenticationRequest();
-			ar.setClientAddress(address);
-			ar.setClientPort(port);
+	private AuthenticationRequest buildASRequest(byte[] data, InetAddress address, int port) {
+		int lastIndex = 0;
+		int counter = 0;
+		AuthenticationRequest ar = new AuthenticationRequest();
+		ar.setClientAddress(address);
+		ar.setClientPort(port);
 
-			for (int i = 0; i < data.length; i++) {
-				if (data[i] == SEPARATOR) {
-					if (counter < 3) {
-						if (counter == 0) {
-							ar.setUsername(new String(Arrays.copyOfRange(data, lastIndex, i)));
+		for (int i = 0; i < data.length; i++) {
+			if (data[i] == SEPARATOR) {
+				if (counter < 3) {
+					if (counter == 0) {
+						ar.setUsername(new String(Arrays.copyOfRange(data, lastIndex, i)));
+						lastIndex = i + 1;
+						counter++;
+					} else {
+						if (counter == 1) {
+							ar.setNonce(new String(Arrays.copyOfRange(data, lastIndex, i)));
 							lastIndex = i + 1;
 							counter++;
 						} else {
-							if (counter == 1) {
-								ar.setNonce(new String(Arrays.copyOfRange(data, lastIndex, i)));
+							if (counter == 2) {
+								ar.setIpmc(new String(Arrays.copyOfRange(data, lastIndex, i)));
 								lastIndex = i + 1;
-								counter++;
-							} else {
-								if (counter == 2) {
-									ar.setIpmc(new String(Arrays.copyOfRange(data, lastIndex, i)));
-									lastIndex = i + 1;
-									ar.setAuthenticatorC(Arrays.copyOfRange(data, lastIndex, data.length));
-									break;
-								}
+								ar.setAuthenticatorC(Arrays.copyOfRange(data, lastIndex, data.length));
+								break;
 							}
 						}
 					}
 				}
 			}
-			return ar;
 		}
+		return ar;
+	}
 
-		private String readFromStgcSapAuth(String property) {
-			try {
-				Properties prop = new Properties();
-				InputStream input = this.getClass().getResourceAsStream("/phase2/as/stgcsap.auth");
+	private String readFromStgcSapAuth(String property) {
+		try {
+			Properties prop = new Properties();
+			InputStream input = this.getClass().getResourceAsStream("/phase2/as/stgcsap.auth");
 
-				// load a properties file
-				prop.load(input);
-				return prop.getProperty(property);
+			// load a properties file
+			prop.load(input);
+			return prop.getProperty(property);
 
-			} catch (IOException io) {
-				io.printStackTrace();
-				return null;
-			}
-		}
-
-		private String readKeyFromConfig (String username) {
-			try {
-				Properties prop = new Properties();
-				InputStream input = this.getClass().getResourceAsStream("/phase2/as/users.conf");
-
-				// load a properties file
-				prop.load(input);
-				return prop.getProperty(username);
-
-			} catch (IOException io) {
-				io.printStackTrace();
-				return null;
-			}
-		}
-
-		private byte[] generateNounce(char type) {
-			return Nonce.randomNonce(type).getBytes();
+		} catch (IOException io) {
+			io.printStackTrace();
+			return null;
 		}
 	}
+
+	private String readKeyFromConfig (String username) {
+		try {
+			Properties prop = new Properties();
+			InputStream input = this.getClass().getResourceAsStream("/phase2/as/users.conf");
+
+			// load a properties file
+			prop.load(input);
+			return prop.getProperty(username);
+
+		} catch (IOException io) {
+			io.printStackTrace();
+			return null;
+		}
+	}
+
+	private byte[] generateNounce(char type) {
+		return Nonce.randomNonce(type).getBytes();
+	}
+}

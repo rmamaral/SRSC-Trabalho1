@@ -11,6 +11,12 @@ configs:
     macKa: HMacSHA1
     macKaKeySize: null
     macKaKeyValue: null
+    keyStoreType: JCEKS
+    keyStoreName: mykeystore.jks
+    keyName: mykey1
+    keyPassword: password
+    keyStorePassword: password
+
 
   - ip: 238.69.69.69
     ciphersuite: blowfish/ECB/PKCS5Padding
@@ -23,6 +29,11 @@ configs:
     macKa: HMacSHA1
     macKaKeySize: null
     macKaKeyValue: null
+    keyStoreType: JCEKS
+    keyStoreName: mykeystore.jks
+    keyName: mykey1
+    keyPassword: password
+    keyStorePassword: password
 
   - ip: 239.9.9.9
     ciphersuite: blowfish/ECB/PKCS5Padding
@@ -35,3 +46,8 @@ configs:
     macKa: HMacSHA1
     macKaKeySize: null
     macKaKeyValue: null
+    keyStoreType: JCEKS
+    keyStoreName: mykeystore.jks
+    keyName: mykey1
+    keyPassword: password
+    keyStorePassword: password

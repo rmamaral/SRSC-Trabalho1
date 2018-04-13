@@ -1,5 +1,9 @@
 package fct.srsc.stgc.utils;
 
+import fct.srsc.stgc.phase2.config.ChatRoomConfig;
+import fct.srsc.stgc.phase2.config.Configurations;
+import org.yaml.snakeyaml.Yaml;
+
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -65,6 +69,19 @@ public class ReadFromConfigs {
 
         } catch (IOException e) {
             e.printStackTrace();
+            return null;
+        }
+    }
+
+    public static ChatRoomConfig readFromConfig (String groupAddress) {
+        Yaml yaml = new Yaml();
+
+        try{
+            InputStream in = ReadFromConfigs.class.getClass().getResourceAsStream("/phase2/as/cyphersuite.yml");
+            Configurations configs = yaml.loadAs(in, Configurations.class);
+            return configs.getChatRoomConfig(groupAddress);
+
+        }catch (Exception e){
             return null;
         }
     }

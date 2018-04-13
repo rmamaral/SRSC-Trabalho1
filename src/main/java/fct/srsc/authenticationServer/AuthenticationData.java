@@ -1,34 +1,6 @@
 package fct.srsc.authenticationServer;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.math.BigInteger;
-import java.security.InvalidKeyException;
-import java.security.Key;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.NoSuchProviderException;
-import java.security.spec.InvalidKeySpecException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Base64;
-import java.util.List;
-import java.util.Properties;
-
-import javax.crypto.BadPaddingException;
-import javax.crypto.Cipher;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.Mac;
-import javax.crypto.NoSuchPaddingException;
-import javax.crypto.SecretKeyFactory;
-import javax.crypto.spec.PBEKeySpec;
-import javax.crypto.spec.SecretKeySpec;
-
-import org.bouncycastle.util.encoders.Hex;
-
-import fct.srsc.stgc.phase1.config.ChatRoomConfig;
-import fct.srsc.stgc.phase1.config.ReadFromConfig;
+import fct.srsc.stgc.phase2.config.ChatRoomConfig;
 import fct.srsc.stgc.phase2.exceptions.AccessDeniedException;
 import fct.srsc.stgc.phase2.exceptions.DuplicatedNonceException;
 import fct.srsc.stgc.phase2.exceptions.MessageIntegrityBrokenException;
@@ -37,6 +9,19 @@ import fct.srsc.stgc.phase2.model.AuthenticatorC;
 import fct.srsc.stgc.phase2.model.TicketAS;
 import fct.srsc.stgc.utils.Nonce;
 import fct.srsc.stgc.utils.ReadFromConfigs;
+import org.bouncycastle.util.encoders.Hex;
+
+import javax.crypto.*;
+import javax.crypto.spec.PBEKeySpec;
+import javax.crypto.spec.SecretKeySpec;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.math.BigInteger;
+import java.security.*;
+import java.security.spec.InvalidKeySpecException;
+import java.util.ArrayList;
+import java.util.Base64;
+import java.util.List;
 
 public class AuthenticationData {
 
@@ -196,18 +181,18 @@ public class AuthenticationData {
 
     private TicketAS buildTicket(String ipmc) {
 
-        ChatRoomConfig crConf = ReadFromConfig.readFromConfig(ipmc);
+        ChatRoomConfig crConf = ReadFromConfigs.readFromConfig(ipmc);
 
         byte[] provider = crConf.getProvider().getBytes();
-        byte[] ks = ReadFromConfigs.getKeyFromKeyStore("JCEKS", "mykeystore.jks", "mykey1", "password".toCharArray(), "password".toCharArray()).getEncoded();
+        byte[] ks = ReadFromConfigs.getKeyFromKeyStore(crConf.getKeyStoreType(), crConf.getKeyStoreName(), crConf.getKeyName(), crConf.getKeyPassword().toCharArray(), crConf.getKeyStorePassword().toCharArray()).getEncoded();
         ks = Base64.getEncoder().encodeToString(ks).getBytes();
 
         byte[] kmAlgorithm = crConf.getMacKm().getBytes();
-        byte[] km = ReadFromConfigs.getKeyFromKeyStore("JCEKS", "mykeystore.jks", "macInKey", "password".toCharArray(), "password".toCharArray()).getEncoded();
+        byte[] km = ReadFromConfigs.getKeyFromKeyStore(crConf.getKeyStoreType(), crConf.getKeyStoreName(), crConf.getKeyName(), crConf.getKeyPassword().toCharArray(), crConf.getKeyStorePassword().toCharArray()).getEncoded();
         km = Base64.getEncoder().encodeToString(km).getBytes();
 
         byte[] kaAlgorithm = crConf.getMacKa().getBytes();
-        byte[] ka = ReadFromConfigs.getKeyFromKeyStore("JCEKS", "mykeystore.jks", "macOutKey", "password".toCharArray(), "password".toCharArray()).getEncoded();
+        byte[] ka = ReadFromConfigs.getKeyFromKeyStore(crConf.getKeyStoreType(), crConf.getKeyStoreName(), crConf.getKeyName(), crConf.getKeyPassword().toCharArray(), crConf.getKeyStorePassword().toCharArray()).getEncoded();
         ka = Base64.getEncoder().encodeToString(ka).getBytes();
 
         //5 min expire time

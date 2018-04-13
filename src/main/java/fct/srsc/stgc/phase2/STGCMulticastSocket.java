@@ -1,10 +1,12 @@
 package fct.srsc.stgc.phase2;
 
+import fct.srsc.stgc.phase1.config.ReadFromConfig;
 import fct.srsc.stgc.phase2.exceptions.DuplicatedNonceException;
 import fct.srsc.stgc.phase2.exceptions.MessageIntegrityBrokenException;
 import fct.srsc.stgc.phase2.model.AuthenticationRequest;
 import fct.srsc.stgc.phase2.model.TicketAS;
 import fct.srsc.stgc.utils.Nonce;
+import fct.srsc.stgc.utils.ReadFromConfigs;
 import org.bouncycastle.util.encoders.Hex;
 
 import javax.crypto.*;
@@ -110,7 +112,7 @@ public class STGCMulticastSocket extends MulticastSocket {
 
         //TODO: For now hardcoded -> ask professor how it is passed
         MessageDigest md = MessageDigest.getInstance(DEFAULT_SHA, PROVIDER_BEFORE_TICKET);
-        byte[] hashedPassword = Hex.decode(readKeyFromConfig(username));
+        byte[] hashedPassword = Hex.decode(ReadFromConfigs.readKeyFromConfig(username));
 
         byte[] nounce = connectAuthenticationServer(hashedPassword);
 
@@ -382,8 +384,8 @@ public class STGCMulticastSocket extends MulticastSocket {
 
         try {
             //get ciphersuite from config file [0] -> payload ciphersuite | [1] -> hMAC ciphersuite
-            String[] ciphersuite = readFromStgcSapAuth(AUTH_CIPHERSUITE).split(":");
-            String provider = readFromStgcSapAuth(AUTH_PROVIDER);
+            String[] ciphersuite = ReadFromConfigs.readFromStgcSapAuth(AUTH_CIPHERSUITE).split(":");
+            String provider = ReadFromConfigs.readFromStgcSapAuth(AUTH_PROVIDER);
 
             c = Cipher.getInstance(ciphersuite[0], provider);
 
@@ -457,8 +459,8 @@ public class STGCMulticastSocket extends MulticastSocket {
 
     private TicketAS decodePayloadFromAS(byte[] data, byte[] nonce, byte[] hashedPassword) throws InvalidKeyException, NoSuchAlgorithmException, NoSuchProviderException, NoSuchPaddingException, InvalidKeySpecException, IOException, BadPaddingException, IllegalBlockSizeException {
         // TODO Auto-generated method stub
-        String[] ciphersuite = readFromStgcSapAuth(AUTH_CIPHERSUITE).split(":");
-        String provider = readFromStgcSapAuth(AUTH_PROVIDER);
+        String[] ciphersuite = ReadFromConfigs.readFromStgcSapAuth(AUTH_CIPHERSUITE).split(":");
+        String provider = ReadFromConfigs.readFromStgcSapAuth(AUTH_PROVIDER);
 
         //Was encoded as String, so needs to be transformed to String before
         BigInteger nouncePlus = new BigInteger(new String(nonce));
@@ -527,36 +529,6 @@ public class STGCMulticastSocket extends MulticastSocket {
         System.out.println("Ticket Received Successfully");
 
         return t;
-    }
-
-    private String readFromStgcSapAuth(String property) {
-        try {
-            Properties prop = new Properties();
-            InputStream input = this.getClass().getResourceAsStream("/phase2/as/stgcsap.auth");
-
-            // load a properties file
-            prop.load(input);
-            return prop.getProperty(property);
-
-        } catch (IOException io) {
-            io.printStackTrace();
-            return null;
-        }
-    }
-
-    private String readKeyFromConfig(String username) {
-        try {
-            Properties prop = new Properties();
-            InputStream input = this.getClass().getResourceAsStream("/phase2/as/users.conf");
-
-            // load a properties file
-            prop.load(input);
-            return prop.getProperty(username);
-
-        } catch (IOException io) {
-            io.printStackTrace();
-            return null;
-        }
     }
 
     private byte[] generateNounce(char type) {

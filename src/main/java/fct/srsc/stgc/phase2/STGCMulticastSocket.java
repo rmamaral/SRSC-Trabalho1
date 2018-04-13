@@ -92,7 +92,12 @@ public class STGCMulticastSocket extends MulticastSocket {
 			System.out.println("authServer: " + authenticationServer);
 		} else {
 
-			byte[] nounce = establishSecureConnection(groupAddress, username);
+			try {
+				establishSecureConnection(groupAddress, username);
+			} catch (InvalidKeyException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 
 			//receiveReplyFromAS ();
 
@@ -102,7 +107,7 @@ public class STGCMulticastSocket extends MulticastSocket {
 	}
 
 
-	private byte[] establishSecureConnection(String groupAddress, String username) throws NoSuchAlgorithmException, InvalidKeySpecException, NoSuchProviderException, IOException, NoSuchPaddingException {
+	private void establishSecureConnection(String groupAddress, String username) throws NoSuchAlgorithmException, InvalidKeySpecException, NoSuchProviderException, IOException, NoSuchPaddingException, InvalidKeyException {
 		this.username = username;
 		this.groupAddress = groupAddress;
 
@@ -115,10 +120,9 @@ public class STGCMulticastSocket extends MulticastSocket {
 		super.receive(p);
 
 		System.out.println("Received response from AuthServer");
-		
-		decodePayloadFromAS(p.getData(), nounce);
-		
-		return nounce;
+		byte [] data = new byte[p.getLength()];
+		System.arraycopy(p.getData(), 0, data, 0, p.getLength());
+		decodePayloadFromAS(data, nounce);
 	}
 
 	@Override
@@ -215,7 +219,7 @@ public class STGCMulticastSocket extends MulticastSocket {
 
 		super.send(packet);
 		System.out.println("Request to AuthServer sent");
-		
+
 		return payloadWithNounce.get(1);
 	}
 
@@ -394,14 +398,81 @@ public class STGCMulticastSocket extends MulticastSocket {
 
 		return null;
 	}
-	
-	private void decodePayloadFromAS(byte[] data, byte[] nounce) {
-		// TODO Auto-generated method stub
-		
-		
-	}
 
-	/*private byte[] decodePayload(Key key, byte[] packet) throws IOException {
+	private void decodePayloadFromAS(byte[] data, byte[] nounce) throws InvalidKeyException, NoSuchAlgorithmException, NoSuchProviderException {
+		// TODO Auto-generated method stub
+		String[] ciphersuite = readFromStgcSapAuth(AUTH_CIPHERSUITE).split(":");
+		String provider = readFromStgcSapAuth(AUTH_PROVIDER);
+
+		MessageDigest messageDigest = MessageDigest.getInstance("md5", "BC");
+		byte[] hMd5 = messageDigest.digest("password".getBytes());
+		Mac hMac = Mac.getInstance(ciphersuite[1], provider);
+		SecretKeySpec keySpec = new SecretKeySpec(hMd5, ciphersuite[1]);
+
+		byte[] core = new byte[data.length - hMac.getMacLength()];
+		byte[] hMacString = new byte[hMac.getMacLength()];
+
+		core = Arrays.copyOfRange(data, 0, data.length - hMac.getMacLength());
+		hMacString = Arrays.copyOfRange(data, data.length - hMac.getMacLength(), data.length);
+		
+		hMac.init(keySpec);
+		hMac.update(core);
+		
+		System.out.println("ALL -> " + Base64.getEncoder().encodeToString(data));
+		System.out.println("HMAC -> " + Base64.getEncoder().encodeToString(hMacString));
+		System.out.println("CORE -> " + Base64.getEncoder().encodeToString(hMac.doFinal()));
+
+		if(!messageDigest.isEqual(hMac.doFinal(), hMacString)) {
+			System.out.println("message corrupted1");
+		}
+		else {
+
+			int counter = 0;
+			int lastIndex = 0;
+			
+			for (int i = 0; i < data.length; i++) {
+				if (data[i] == SEPARATOR) {
+					if (counter < 3) {
+						if (counter == 0) {
+							byte[] nouncePlus = Arrays.copyOfRange(data, lastIndex, i);
+							if(!messageDigest.isEqual(nouncePlus, nounce)) {
+								System.out.println("Message Corrupted2");
+								break;
+							}
+							lastIndex = i + 1;
+							counter++;
+						} else {
+							if (counter == 1) {
+								byte[] responseNounce = Arrays.copyOfRange(data, lastIndex, i);
+								if(nounceList.contains(responseNounce)) {
+									System.out.println("Message Corrupted3");
+									break;
+								}
+								lastIndex = i + 1;
+								counter++;
+							} else {
+								if (counter == 2) {
+									byte[] ticket = new byte[data.length-hMac.getMacLength()];
+									System.arraycopy(data, i+1, ticket, 0, data.length-hMac.getMacLength());
+									break;
+								}
+							}
+						}
+					}
+				}	
+			}
+			
+			//take care of ticket
+			
+			
+		}
+			
+			
+
+
+		}
+
+		/*private byte[] decodePayload(Key key, byte[] packet) throws IOException {
 
         try {
             int packetLength = packet.length;
@@ -472,7 +543,7 @@ public class STGCMulticastSocket extends MulticastSocket {
         }
     }*/
 
-	/*private byte[] decodePayloadFromClient(Key key, byte[] packet) throws IOException, NoSuchAlgorithmException, NoSuchProviderException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
+		/*private byte[] decodePayloadFromClient(Key key, byte[] packet) throws IOException, NoSuchAlgorithmException, NoSuchProviderException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
 
         int packetLength = packet.length;
 
@@ -518,71 +589,71 @@ public class STGCMulticastSocket extends MulticastSocket {
 
     }*/
 
-	private AuthenticationRequest buildASRequest(byte[] data, InetAddress address, int port) {
-		int lastIndex = 0;
-		int counter = 0;
-		AuthenticationRequest ar = new AuthenticationRequest();
-		ar.setClientAddress(address);
-		ar.setClientPort(port);
+		private AuthenticationRequest buildASRequest(byte[] data, InetAddress address, int port) {
+			int lastIndex = 0;
+			int counter = 0;
+			AuthenticationRequest ar = new AuthenticationRequest();
+			ar.setClientAddress(address);
+			ar.setClientPort(port);
 
-		for (int i = 0; i < data.length; i++) {
-			if (data[i] == SEPARATOR) {
-				if (counter < 3) {
-					if (counter == 0) {
-						ar.setUsername(new String(Arrays.copyOfRange(data, lastIndex, i)));
-						lastIndex = i + 1;
-						counter++;
-					} else {
-						if (counter == 1) {
-							ar.setNonce(new String(Arrays.copyOfRange(data, lastIndex, i)));
+			for (int i = 0; i < data.length; i++) {
+				if (data[i] == SEPARATOR) {
+					if (counter < 3) {
+						if (counter == 0) {
+							ar.setUsername(new String(Arrays.copyOfRange(data, lastIndex, i)));
 							lastIndex = i + 1;
 							counter++;
 						} else {
-							if (counter == 2) {
-								ar.setIpmc(new String(Arrays.copyOfRange(data, lastIndex, i)));
+							if (counter == 1) {
+								ar.setNonce(new String(Arrays.copyOfRange(data, lastIndex, i)));
 								lastIndex = i + 1;
-								ar.setAuthenticatorC(Arrays.copyOfRange(data, lastIndex, data.length));
-								break;
+								counter++;
+							} else {
+								if (counter == 2) {
+									ar.setIpmc(new String(Arrays.copyOfRange(data, lastIndex, i)));
+									lastIndex = i + 1;
+									ar.setAuthenticatorC(Arrays.copyOfRange(data, lastIndex, data.length));
+									break;
+								}
 							}
 						}
 					}
 				}
 			}
+			return ar;
 		}
-		return ar;
-	}
 
-	private String readFromStgcSapAuth(String property) {
-		try {
-			Properties prop = new Properties();
-			InputStream input = this.getClass().getResourceAsStream("/phase2/as/stgcsap.auth");
+		private String readFromStgcSapAuth(String property) {
+			try {
+				Properties prop = new Properties();
+				InputStream input = this.getClass().getResourceAsStream("/phase2/as/stgcsap.auth");
 
-			// load a properties file
-			prop.load(input);
-			return prop.getProperty(property);
+				// load a properties file
+				prop.load(input);
+				return prop.getProperty(property);
 
-		} catch (IOException io) {
-			io.printStackTrace();
-			return null;
+			} catch (IOException io) {
+				io.printStackTrace();
+				return null;
+			}
+		}
+
+		private String readKeyFromConfig (String username) {
+			try {
+				Properties prop = new Properties();
+				InputStream input = this.getClass().getResourceAsStream("/phase2/as/users.conf");
+
+				// load a properties file
+				prop.load(input);
+				return prop.getProperty(username);
+
+			} catch (IOException io) {
+				io.printStackTrace();
+				return null;
+			}
+		}
+
+		private byte[] generateNounce(char type) {
+			return Nonce.randomNonce(type).getBytes();
 		}
 	}
-
-	private String readKeyFromConfig (String username) {
-		try {
-			Properties prop = new Properties();
-			InputStream input = this.getClass().getResourceAsStream("/phase2/as/users.conf");
-
-			// load a properties file
-			prop.load(input);
-			return prop.getProperty(username);
-
-		} catch (IOException io) {
-			io.printStackTrace();
-			return null;
-		}
-	}
-
-	private byte[] generateNounce(char type) {
-		return Nonce.randomNonce(type).getBytes();
-	}
-}

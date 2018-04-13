@@ -224,8 +224,8 @@ public class STGCMulticastSocket extends MulticastSocket {
             packet.setLength(p.length);
             packet.setData(p);
 
-            packet.setAddress(InetAddress.getByName("238.69.69.69"));
-            packet.setPort(9999);
+            packet.setAddress(clientAddress);
+            packet.setPort(port);
 
             super.send(packet);
             System.out.println("sended from server to client");

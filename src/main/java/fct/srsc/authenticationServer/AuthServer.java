@@ -43,7 +43,7 @@ public class AuthServer {
 
                 byte[] payload = authData.encrypt(ar);
 
-                socket.sendToClient(payload, ar.getClientAddress(), ar.getClientPort());
+                socket.sendToClient(payload, InetAddress.getByName(ar.getIpmc()), ar.getClientPort());
 
             } catch (Exception e) {
                 byte[] message = ERROR.getBytes();

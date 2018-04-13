@@ -222,6 +222,7 @@ public class STGCMulticastSocket extends MulticastSocket {
     		
     		DatagramPacket packet = new DatagramPacket(new byte[65536], 65536);
     		packet.setAddress(clientAddress);
+    		packet.setPort(AS_LOCATION_PORT);
 			packet.setLength(p.length);
     		packet.setData(p);
   

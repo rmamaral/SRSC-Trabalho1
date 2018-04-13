@@ -261,7 +261,7 @@ public class AuthenticationData {
 	private TicketAS buildTicket(String ipmc){
 		
 		ChatRoomConfig crConf = ReadFromConfig.readFromConfig(ipmc);
-		
+
 		byte[] ks = ReadFromConfigs.getKeyFromKeyStore("JCEKS", "mykeystore.jks", "mykey1", "password".toCharArray(), "password".toCharArray()).getEncoded();
 		byte[] kmAlgorithm = crConf.getMacKm().getBytes(); 
 		byte[] km = ReadFromConfigs.getKeyFromKeyStore("JCEKS", "mykeystore.jks", "macInKey", "password".toCharArray(), "password".toCharArray()).getEncoded();

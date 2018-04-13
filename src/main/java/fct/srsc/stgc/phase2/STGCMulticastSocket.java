@@ -128,10 +128,12 @@ public class STGCMulticastSocket extends MulticastSocket {
         ticket = decodePayloadFromAS(Arrays.copyOf(p.getData(), p.getLength()), nounce, hashedPassword);
         System.out.println("Secure Connection Established");
 
+
         System.out.println("cipher: " + new String(ticket.getCiphersuite()));
         System.out.println("kMAlg: " + new String(ticket.getKm()));
         System.out.println("kAAlg: " + new String(ticket.getKa()));
         System.out.println("Exp: " + ticket.getExpire());
+        //System.out.println("Provider: " + new String(ticket.getProvider()));
     }
 
     @Override
@@ -312,6 +314,76 @@ public class STGCMulticastSocket extends MulticastSocket {
         return null;
     }
 
+    private byte[] decodePayload(Key key, byte[] packet) throws IOException {
+
+        try {
+            int packetLength = packet.length;
+
+            //Create hash for core
+            Mac hMacOut = Mac.getInstance(new String(ticket.getKa()), "BC");
+            Key hMacKeyOut = new SecretKeySpec(ticket.getKaAlgorithm(), new String(ticket.getKa()));
+
+            byte[] hMacString = Arrays.copyOfRange(packet, packetLength - hMacOut.getMacLength(), packetLength);
+
+            hMacOut.init(hMacKeyOut);
+            hMacOut.update(packet, 0, (packet.length - hMacOut.getMacLength()));
+
+            if (!MessageDigest.isEqual(hMacOut.doFinal(), hMacString))
+                throw new MessageIntegrityBrokenException();
+
+            c.init(Cipher.DECRYPT_MODE, key);
+
+            byte[] content = c.doFinal(packet, 0, (packet.length - hMacOut.getMacLength()));
+
+            //Create hash of mp
+            Mac hMacIn = Mac.getInstance(new String(ticket.getKm()), "BC");
+            Key hMacInKey = new SecretKeySpec(ticket.getKmAlgorithm(), new String(ticket.getKm()));
+
+            byte[] hMacInString = Arrays.copyOfRange(content, content.length - hMacIn.getMacLength(), content.length);
+
+            hMacIn.init(hMacInKey);
+            hMacIn.update(content, 0, (content.length - hMacIn.getMacLength()));
+
+            if (!MessageDigest.isEqual(hMacIn.doFinal(), hMacInString))
+                throw new MessageIntegrityBrokenException();
+
+
+            byte[] messageBytes = Arrays.copyOfRange(content, 0, content.length - hMacIn.getMacLength());
+
+            int nonceIndex = -1;
+            String nonce = null;
+            byte[] actualMessage = new byte[MAX_SIZE];
+
+            int counter = 0;
+            for (int i = 0; i < messageBytes.length; i++) {
+                if (messageBytes[i] == SEPARATOR) {
+                    counter++;
+                }
+                if (counter == 1 && nonceIndex == -1) {
+                    nonceIndex = i;
+                }
+
+                if (counter == 2) {
+                    nonce = new String(Arrays.copyOfRange(messageBytes, nonceIndex + 1, i));
+                    actualMessage = Arrays.copyOfRange(messageBytes, i + 1, messageBytes.length);
+                    break;
+                }
+            }
+
+            if (!nounceList.contains(nonce))
+                nounceList.add(nonce);
+            else {
+                throw new DuplicatedNonceException();
+            }
+
+            return actualMessage;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
     private List<byte[]> encodePayloadToAS(byte[] hashedPassword, DatagramPacket packet) throws IOException {
 
         try {
@@ -456,85 +528,10 @@ public class STGCMulticastSocket extends MulticastSocket {
                 }
             }
         }
-        //take care of ticket
+
         System.out.println("Ticket Received Successfully");
 
         return t;
-    }
-
-    private byte[] decodePayload(Key key, byte[] packet) throws IOException {
-
-        try {
-            int packetLength = packet.length;
-
-            //Create hash for core
-            Mac hMacOut = Mac.getInstance(new String(ticket.getKa()), "BC");
-            Key hMacKeyOut = new SecretKeySpec(ticket.getKaAlgorithm(), new String(ticket.getKa()));
-
-            byte[] hMacString = new byte[hMacOut.getMacLength()];
-            System.arraycopy(packet, packetLength - hMacOut.getMacLength(), hMacString, 0, hMacOut.getMacLength());
-
-            hMacOut.init(hMacKeyOut);
-            hMacOut.update(packet, 0, (packet.length - hMacOut.getMacLength()));
-
-            if (!MessageDigest.isEqual(hMacOut.doFinal(), hMacString))
-                throw new MessageIntegrityBrokenException();
-
-            c.init(Cipher.DECRYPT_MODE, key);
-
-            byte[] content = c.doFinal(packet, 0, (packet.length - hMacOut.getMacLength()));
-
-
-            //Create hash of mp
-            Mac hMacIn = Mac.getInstance(new String(ticket.getKm()), "BC");
-            Key hMacInKey = new SecretKeySpec(ticket.getKmAlgorithm(), new String(ticket.getKm()));
-
-            byte[] hMacInString = new byte[hMacIn.getMacLength()];
-
-            System.arraycopy(content, content.length - hMacIn.getMacLength(), hMacInString, 0, hMacIn.getMacLength());
-
-
-            hMacIn.init(hMacInKey);
-            hMacIn.update(content, 0, (content.length - hMacIn.getMacLength()));
-
-            if (!MessageDigest.isEqual(hMacIn.doFinal(), hMacInString))
-                throw new MessageIntegrityBrokenException();
-
-
-            byte[] messageBytes = Arrays.copyOfRange(content, 0, content.length - hMacIn.getMacLength());
-
-            int nounceIndex = -1;
-            String nounce = null;
-            byte[] actualMessage = new byte[MAX_SIZE];
-
-            int counter = 0;
-            for (int i = 0; i < messageBytes.length; i++) {
-                if (messageBytes[i] == SEPARATOR) {
-                    counter++;
-                }
-                if (counter == 1 && nounceIndex == -1) {
-                    nounceIndex = i;
-                }
-
-                if (counter == 2) {
-                    nounce = new String(Arrays.copyOfRange(messageBytes, nounceIndex + 1, i));
-                    actualMessage = Arrays.copyOfRange(messageBytes, i + 1, messageBytes.length);
-                    break;
-                }
-            }
-
-            if (!nounceList.contains(nounce))
-                nounceList.add(nounce);
-            else {
-                throw new DuplicatedNonceException();
-            }
-
-            return actualMessage;
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        }
     }
 
     private AuthenticationRequest buildASRequest(byte[] data, InetAddress address, int port) {

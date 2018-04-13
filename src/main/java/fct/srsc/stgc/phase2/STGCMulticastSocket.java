@@ -248,21 +248,7 @@ public class STGCMulticastSocket extends MulticastSocket {
 		return ar;
 	}
 
-	private Key getKeyFromKeyStore(String type, String keystore, String key, char[] keyPassword, char[] keyStorePassword) {
 
-		try {
-			KeyStore keyStore = KeyStore.getInstance(type);
-			// Keystore where symmetric keys are stored (type JCEKS)
-			FileInputStream stream = new FileInputStream(keystore);
-			keyStore.load(stream, keyStorePassword);
-
-			Key key1 = keyStore.getKey(key, keyPassword);
-
-			return key1;
-		} catch (Exception e) {
-			return null;
-		}
-	}
 
 	private byte[] buildHeader(int payloadSize, char type) throws IOException {
 		ByteArrayOutputStream outputStream = new ByteArrayOutputStream();

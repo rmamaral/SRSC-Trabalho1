@@ -1,9 +1,8 @@
 package fct.srsc.stgc.phase1.config;
 
-import fct.srsc.HelloWorld;
-import org.yaml.snakeyaml.Yaml;
-
 import java.io.InputStream;
+
+import org.yaml.snakeyaml.Yaml;
 
 public class ReadFromConfig {
 

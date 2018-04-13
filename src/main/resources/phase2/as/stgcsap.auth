@@ -1,0 +1,25 @@
+# Multiple options for cypher suites are:
+#
+# PBEWithSHAAnd3KeyTripleDES
+# PBEWITHSHA256AND256BITAES-CBC-BC
+# PBEWITHSHA-1AND256BITAES-CBC-BC
+# PBEWithHmacSHA224AndAES_256
+#
+# with MAC construction:
+#
+#
+# HMacSHA1
+# HMAC/SHA384
+# HMAC-SHA3-224
+# HMAC-SHA3-256
+# HMAC-SHA512
+# ...etc
+# SKIPJACKMAC
+# AESGMAC
+# RC6GMAC
+# RC5MAC
+# DES
+# ... etc
+
+STGC-SAP: PBEWithSHAAnd3KeyTripleDES:HMacSHA1
+PROVIDER: BC

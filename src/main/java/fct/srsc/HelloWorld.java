@@ -1,36 +1,34 @@
 package fct.srsc;
 
-import fct.srsc.stgc.phase1.config.ChatRoomConfig;
-import fct.srsc.stgc.phase1.config.Configurations;
-import org.yaml.snakeyaml.Yaml;
-
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.security.SecureRandom;
-import java.util.Date;
+import java.math.BigInteger;
+import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
+
+import fct.srsc.stgc.utils.Nonce;
 
 public class HelloWorld {
 
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException, NoSuchProviderException, NoSuchAlgorithmException {
 
-        //Build mp, id nonce and message
-        ByteArrayOutputStream mp = new ByteArrayOutputStream();
+        /*Properties prop = new Properties();
+        InputStream input = HelloWorld.class.getClass().getResourceAsStream("/phase2/as/users.conf");
 
-        String dateTimeString = Long.toString(new Date().getTime());
+        // load a properties file
+        prop.load(input);
 
-        mp.write(Integer.toString(1).getBytes());
-        mp.write('|');
-        mp.write("wd".getBytes());
-        mp.write('|');
-        mp.write("qsd".getBytes());
 
-        byte[] y = mp.toByteArray();
+        MessageDigest md = MessageDigest.getInstance("SHA-512", "BC");
+        String reis = "I<3BaNanA5!";
 
-        for (int i = 0; i<y.length; i++){
-            if(y[i]=='|')
-                System.out.println("HILLO");
-        }
+        byte [] x = md.digest(reis.getBytes());
+        System.out.println(Hex.toHexString(x).equals(prop.getProperty("reis"))? true : false);*/
+
+        BigInteger x = new BigInteger(Nonce.randomNonce('S'));
+        System.out.println(x);
+
+        BigInteger y = x.add(BigInteger.ONE);
+        System.out.println(y);
     }
 }

@@ -1,17 +1,5 @@
 package fct.srsc.stgc.phase1;
 
-import fct.srsc.stgc.phase1.config.ChatRoomConfig;
-import fct.srsc.stgc.phase1.config.ReadFromConfig;
-import fct.srsc.stgc.phase1.exceptions.DuplicatedNonceException;
-import fct.srsc.stgc.phase1.exceptions.MessageIntegrityBrokenException;
-import fct.srsc.stgc.phase1.utils.Nonce;
-
-import javax.crypto.Cipher;
-import javax.crypto.Mac;
-import javax.crypto.NoSuchPaddingException;
-import javax.crypto.SecretKey;
-import javax.crypto.spec.SecretKeySpec;
-
 import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -23,14 +11,23 @@ import java.security.KeyStore;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
-import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Base64;
 import java.util.Date;
 import java.util.List;
 
-public class STGCMulticastSocket extends MulticastSocket {
+import javax.crypto.Cipher;
+import javax.crypto.Mac;
+import javax.crypto.NoSuchPaddingException;
+
+import fct.srsc.stgc.phase1.config.ChatRoomConfig;
+import fct.srsc.stgc.phase1.config.ReadFromConfig;
+import fct.srsc.stgc.phase1.exceptions.DuplicatedNonceException;
+import fct.srsc.stgc.phase1.exceptions.MessageIntegrityBrokenException;
+import fct.srsc.stgc.utils.Nonce;
+
+@SuppressWarnings("Duplicates")
+public class STGCMulticastSocketPhase1 extends MulticastSocket {
 
     private static final String VERSION = "0";
     private static final String RELEASE = "1";
@@ -46,17 +43,17 @@ public class STGCMulticastSocket extends MulticastSocket {
     private int id = 1;
     private List<String> nounceList;
 
-    public STGCMulticastSocket(String groupAddress) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException {
+    public STGCMulticastSocketPhase1(String groupAddress) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException {
         super();
         init(groupAddress);
     }
 
-    public STGCMulticastSocket(String groupAddress, int port) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException {
+    public STGCMulticastSocketPhase1(String groupAddress, int port) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException {
         super(port);
         init(groupAddress);
     }
 
-    public STGCMulticastSocket(String groupAddress, SocketAddress bindAdrress) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException {
+    public STGCMulticastSocketPhase1(String groupAddress, SocketAddress bindAdrress) throws IOException, NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException {
         super(bindAdrress);
         init(groupAddress);
     }
@@ -70,7 +67,7 @@ public class STGCMulticastSocket extends MulticastSocket {
     @Override
     public void send(DatagramPacket packet) throws IOException {
         System.out.println("Sending message through secure channel");
-        
+
         Key key64 = getKeyFromKeyStore("JCEKS", "mykeystore.jks", "mykey1", "password".toCharArray(), "password".toCharArray());
 
         byte[] payload = encodePayload(key64, packet);//c.doFinal(packet.getData());
@@ -245,12 +242,12 @@ public class STGCMulticastSocket extends MulticastSocket {
                 if (messageBytes[i] == SEPARATOR) {
                     counter++;
                 }
-                if (counter == 1 && nounceIndex==-1){
+                if (counter == 1 && nounceIndex == -1) {
                     nounceIndex = i;
                 }
 
                 if (counter == 2) {
-                    nounce = new String(Arrays.copyOfRange(messageBytes, nounceIndex+1, i));
+                    nounce = new String(Arrays.copyOfRange(messageBytes, nounceIndex + 1, i));
                     actualMessage = Arrays.copyOfRange(messageBytes, i + 1, messageBytes.length);
                     break;
                 }
@@ -271,6 +268,6 @@ public class STGCMulticastSocket extends MulticastSocket {
     }
 
     private byte[] generateNounce() {
-        return Nonce.randomString().getBytes();
+        return Nonce.randomNonce(PAYLOAD_TYPE.charAt(0)).getBytes();
     }
 }
